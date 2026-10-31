@@ -1,6 +1,6 @@
 # Household Ledger: setup and use
 
-The dashboard is a static website (the `site/` folder). It contains no amounts. It does contain an account ID (`GEZ-BE57`) and a few name patterns in `calc.js`; edit those if you want the repo fully neutral. The data comes live from your private Google Sheet through a small Apps Script, and only when the correct password is supplied.
+The dashboard is a static website (the files in the repo root). It contains no amounts, account numbers or passwords. `data/demo.json` holds invented numbers only. The data comes live from your private Google Sheet through a small Apps Script, and only when the correct password is supplied.
 
 ## A. One-time setup (about 20 minutes)
 
@@ -16,7 +16,7 @@ After any change to `Code.gs`: **Deploy > Manage deployments > edit > New versio
 
 ### 2. Website on GitHub Pages
 1. Create a **public** repo with a neutral name, e.g. `huishoudboekje`.
-2. Upload the contents of the `site/` folder (not the folder itself). `data/demo.json` holds invented numbers only.
+2. Put the files in the repo root. `data/fixture.json` is in `.gitignore` and must never go online.
 3. Open `config.js` and set `API_URL` to your Web app URL. Commit.
 4. Repo > **Settings > Pages** > Branch `main`, folder `/ (root)`. After a minute it is live at `https://YOURNAME.github.io/huishoudboekje/`.
 
@@ -30,13 +30,23 @@ After any change to `Code.gs`: **Deploy > Manage deployments > edit > New versio
 
 That is all.
 
-## C. Adding Sofie
-Add her accounts to **Rekeningen** with Eigenaar = `Sofie`. Once they exist, the incompleteness warning disappears. The SOFIE view keeps showing only her expenses for now; ask for Result and savings ratio to be added once her income is in the sheet.
+## C. Accounts and Sofie
+- **Optional column Gebruik** in the **Rekeningen** tab: `maandelijks` (monthly) or `af en toe` (occasional). An occasional account never triggers the "no bookings" note. Without the column, credit card, Revolut and meal vouchers count as occasional automatically.
+- Accounts with Eigenaar = `Sofie` fill the SOFIE view. Without her own accounts, income-based tiles show an empty state inside the tile.
 
-## D. Maintenance and limits
+## D. Layout (widgets)
+- Tap **Bewerk** or long-press a tile. Drag by the handle (⠿) or use the arrows. S, M and L set the size, − removes a tile, **+ Widget** adds one. **Standaard herstellen** resets that view. **Klaar** finishes.
+- The layout is saved per device and per view. To move it: menu (three dots) > **Kopieer layoutcode**, then on the other device > **Plak layoutcode**. The code contains no numbers.
+
+## E. Maintenance and limits
 - **Change the password**: edit the script property. Everyone has to re-enter it (menu > "Wachtwoord vergeten op dit toestel").
 - **Lockout**: after 8 wrong attempts it is blocked for 15 minutes. This applies to everyone, including you two.
 - **Password in the URL**: it travels as a parameter of an encrypted (https) request. Use a unique password you use nowhere else.
 - **Sheet structure**: if columns or tabs are renamed, the dashboard shows a clear error message. Keep the column names of `Transacties` as they are.
 - **Offline**: the dashboard shows the last fetched data with an "Offline" notice.
 - **Still to do on your side**: a real iPad/Safari test, the home-screen install, and a first real call to the Apps Script.
+
+## F. Testing (for whoever works on the code)
+- `node dev/test_calc.js`: calculation and layout rules. With `data/fixture.json` (local, never in git) it also checks the real numbers.
+- `python3 dev/test_ui.py <folder with a copy of the site + data/fixture.json>`: Playwright screen test at iPad and phone sizes, light and dark.
+- `python3 dev/tools_demo.py data/demo.json`: fresh invented demo data.
