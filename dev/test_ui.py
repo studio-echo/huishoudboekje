@@ -47,7 +47,9 @@ CHECK_JS = r"""() => {
     if (!r.width || cs.visibility === 'hidden' || b.closest('[hidden]')) continue;
     let p = b, hid = false; while ((p = p.parentElement)) if (getComputedStyle(p).display === 'none') { hid = true; break; }
     if (hid) continue;
-    if (r.width < 43.5 || r.height < 43.5) out.push('tikdoel ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' ' + (b.getAttribute('aria-label') || b.textContent).trim().slice(0, 30));
+    const af = getComputedStyle(b, '::after'), ext = k => af.content !== 'none' && af.position === 'absolute' ? Math.max(0, -parseFloat(af[k]) || 0) : 0;
+    const w = r.width + ext('left') + ext('right'), h = r.height + ext('top') + ext('bottom');
+    if (w < 43.5 || h < 43.5) out.push('tikdoel ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' ' + (b.getAttribute('aria-label') || b.textContent).trim().slice(0, 30));
   }
   return out;
 }"""
@@ -102,7 +104,20 @@ with sync_playwright() as pw:
     ctx, page = new_page(b, 1180, 820, 'dark', errors)
     page.goto(BASE + 'index.html?src=fixture'); page.wait_for_selector('#grid .w')
     go(page, 'MATS')
-    page.click('[data-per=vol]'); assert page.locator('[data-per=vol]').get_attribute('aria-pressed') == 'true'
+    for k in ['kwartaal', 'jaar', 'alles']:
+        page.click('[data-per=%s]' % k)
+        if page.locator('[data-per=%s]' % k).get_attribute('aria-selected') != 'true': fails.append('periode %s werkt niet' % k)
+    if 'mrt tot' not in page.locator('.mlabel').inner_text(): fails.append('label alles: ' + page.locator('.mlabel').inner_text())
+    page.click('[data-per=kwartaal]')
+    if not page.locator('.mlabel').inner_text().startswith('Q'): fails.append('label kwartaal: ' + page.locator('.mlabel').inner_text())
+    page.click('[data-st="-1"]')
+    if not page.locator('.mlabel').inner_text().startswith('Q2'): fails.append('kwartaal terug: ' + page.locator('.mlabel').inner_text())
+    # doorklikken: categorie, ritme, 50/30/20 openen een vel met betalingen
+    for sel in ['[data-id=categorieen] [data-dd]', '[data-id=ritme] [data-dd]', '[data-id=regel] [data-dd]', '[data-id=vastvrij] [data-dd]']:
+        if not page.locator(sel).count(): fails.append('geen doorklik in ' + sel); continue
+        page.locator(sel).first.click(); page.wait_for_selector('#sheet')
+        if page.locator('#sheet .list li').count() < 1: fails.append('doorklik toont geen betalingen ' + sel)
+        page.keyboard.press('Escape')
     page.locator('.bars .col[data-month="2026-05"]').first.click()
     lab = page.locator('.mlabel').inner_text()
     if 'mei' not in lab: fails.append('tik op staaf kiest maand niet: ' + lab)
@@ -157,14 +172,8 @@ with sync_playwright() as pw:
     if not saved or 'weekdag' not in saved: fails.append('indeling niet bewaard')
     page.reload(); page.wait_for_selector('#grid .w')
     if not any(x.startswith('weekdag') for x in order()): fails.append('indeling niet hersteld na herladen')
-    # layoutcode kopieren en plakken
-    code = page.evaluate("() => Layout.encode({MATS: Layout.parseSaved(localStorage.getItem('hb_layout_MATS'), 'MATS')})")
     page.click('#edit'); page.click('[data-act=reset]'); page.click('#edit')
     if any(x.startswith('weekdag') for x in order()): fails.append('standaard herstellen werkt niet')
-    page.click('#menu'); page.click('[data-act=paste]'); page.fill('#codein', 'onzin'); page.click('[data-act=apply]')
-    if 'geen geldige' not in page.locator('#codeerr').inner_text(): fails.append('foute layoutcode geeft geen uitleg')
-    page.fill('#codein', code); page.click('[data-act=apply]')
-    if not any(x.startswith('weekdag') for x in order()): fails.append('layoutcode plakken werkt niet')
     # lang drukken buiten bewerkmodus opent bewerkmodus
     box = page.locator('[data-id=inkomen] .wt').bounding_box()
     cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': box['x'] + 20, 'y': box['y'] + 8}]})
@@ -175,6 +184,20 @@ with sync_playwright() as pw:
     page.reload(); page.wait_for_selector('#grid .w')
     if page.locator('#grid .w').count() < 10: fails.append('kapotte opslag geeft geen standaardindeling')
     for e in errors: fails.append('interactie console: ' + e)
+    ctx.close()
+
+    # 2b. gedeelde indeling uit het blad wint van wat op het toestel staat
+    fx = json.load(open(os.path.join(ROOT, 'data', 'fixture.json')))
+    fx3 = dict(fx); fx3['indeling'] = {'MATS': [{'id': 'weekdag', 'size': 'L'}, {'id': 'auto', 'size': 'L'}, {'id': 'beleggingen', 'size': 'L'}]}
+    errors = []
+    ctx, page = new_page(b, 820, 1180, 'light', errors, fx3)
+    page.goto(BASE + 'index.html?src=fixture'); page.wait_for_selector('#grid .w')
+    page.evaluate("() => { localStorage.setItem('hb_layout_MATS', JSON.stringify({v:2,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS') }")
+    page.reload(); page.wait_for_selector('#grid .w')
+    ids = page.evaluate("() => [...document.querySelectorAll('#grid .w')].map(t => t.dataset.id)")
+    if ids != ['weekdag', 'auto', 'beleggingen']: fails.append('gedeelde indeling niet gebruikt: ' + ','.join(ids))
+    check(page, 'gedeelde indeling')
+    for e in errors: fails.append('gedeelde indeling console: ' + e)
     ctx.close()
 
     # 3. Sofie zonder eigen rekeningen: lege toestand in de tegel

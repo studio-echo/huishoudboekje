@@ -129,7 +129,8 @@ ok('onbekende categorie gemeld', unk.unknownCategories['Nieuwe categorie'] === 1
 
 /* ---------- 3. indeling ---------- */
 ['MATS', 'SOFIE', 'SAMEN'].forEach(v => ok('standaard ' + v + ' geldig', L.clean(L.defaults(v), v).length === L.defaults(v).length));
-ok('MATS en SOFIE zelfde standaard', JSON.stringify(L.defaults('MATS')) === JSON.stringify(L.defaults('SOFIE')));
+ok('MATS en SOFIE zelfde standaard, met auto', JSON.stringify(L.defaults('MATS')) === JSON.stringify(L.defaults('SOFIE')) && L.defaults('SOFIE').some(x => x.id === 'auto'));
+ok('gedeelde indeling opgeschoond', JSON.stringify(L.fromShared({ MATS: [{ id: 'auto', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], X: [] })) === '{"MATS":[{"id":"auto","size":"L"}]}');
 ok('eerlijkheid enkel bij SAMEN', !L.allowed('eerlijkheid', 'MATS') && L.allowed('eerlijkheid', 'SAMEN'));
 ok('ongeveer 20 widgets', L.CATALOG.length >= 19, L.CATALOG.length);
 const saved = L.parseSaved(JSON.stringify({ v: 1, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
@@ -142,6 +143,39 @@ const code = L.encode({ MATS: saved, SAMEN: L.defaults('SAMEN') }), back = L.dec
 ok('layoutcode heen en terug', JSON.stringify(back.MATS) === JSON.stringify(saved) && back.SAMEN.length === L.defaults('SAMEN').length && !back.SOFIE);
 let err = ''; try { L.decode('onzin'); } catch (e) { err = e.message; } ok('foute layoutcode geeft Nederlandse uitleg', /geen geldige layoutcode/.test(err));
 err = ''; try { L.decode('HB2.!!!'); } catch (e) { err = e.message; } ok('beschadigde layoutcode', /beschadigd|geen herkende/.test(err), err);
+
+/* ---------- nieuwe berekeningen, verzonnen voorbeeld ---------- */
+{
+  const tx = (Datum, Categorie, Bedrag, Tegenpartij, s = 1) => ({ Datum, Rekening_ID: 'X', Categorie, Bedrag, Aandeel_Mats: 0, Aandeel_Sofie: s, Eenmalig: 0, Tegenpartij, Omschrijving: '' });
+  const d = { categorieen: [{ Categorie: 'Loon', Type: 'inkomen' }, { Categorie: 'Woonkost', Type: 'uitgave' }, { Categorie: 'Boodschappen', Type: 'uitgave' }, { Categorie: 'Reizen', Type: 'uitgave', Soort: 'nodig' }, { Categorie: 'Mobiliteit & parking', Type: 'uitgave' }, { Categorie: 'Sparen & investeren', Type: 'sparen' }],
+    rekeningen: [{ Rekening_ID: 'X', Eigenaar: 'Sofie', Type: 'Zichtrekening' }], transacties: [], saldi: [],
+    potjes: [{ Naam: 'Eten', Categorieen: 'Boodschappen', Bedrag: 100, Wie: 'Sofie' }, { Naam: 'Weg', Categorieen: 'Reizen', Procent: '10%' }, { Naam: 'Mats', Categorieen: 'Reizen', Bedrag: 5, Wie: 'Mats' }],
+    beleggingen: [{ Datum: '2026-01-05', ETF: 'A', Soort: 'aankoop', Bedrag: 100, Aantal: 1, Wie: 'Sofie' }, { Datum: '2026-02-05', ETF: 'A', Soort: 'aankoop', Bedrag: 100, Aantal: 1, Wie: 'Sofie' }, { Datum: '2026-02-28', ETF: 'A', Soort: 'waarde', Bedrag: 230, Wie: 'Sofie' }] };
+  ['2026-01', '2026-02', '2026-03', '2026-04'].forEach((m, i) => {
+    d.transacties.push(tx(m + '-25', 'Loon', 1000, 'Werkgever'), tx(m + '-03', 'Woonkost', -500, 'Huisbaas'), tx(m + '-10', 'Boodschappen', -80 - i * 20, 'Winkel'));
+  });
+  d.transacties.push(tx('2026-01-15', 'Woonkost', -60, 'Water'), tx('2026-04-15', 'Woonkost', -60, 'Water'), tx('2026-02-01', 'Woonkost', -300, 'Brandverzekering'),
+    tx('2026-03-02', 'Mobiliteit & parking', -50, 'TOTAL 123 Gent'), tx('2026-03-09', 'Mobiliteit & parking', -6, 'Q-Park Centrum'), tx('2026-03-12', 'Reizen', -200, 'Hotel'));
+  const cx = C.makeCtx(d), rows = C.rowsFor(cx, 'SOFIE'), rec = {};
+  C.recurring(rows, 3, '2026-04').forEach(r => { rec[r.key] = 1; });
+  const fq = C.frequency(rows, rec);
+  ok('ritme: huur elke maand', fq.keys[C.counterparty(d.transacties[1])] === 'maandelijks' && Math.round(fq.maandelijks) === 2000, fq.maandelijks);
+  ok('ritme: water per kwartaal', Math.round(fq.kwartaal) === 120, fq.kwartaal);
+  ok('ritme: verzekering per jaar', Math.round(fq.jaarlijks) === 300, fq.jaarlijks);
+  ok('ritme: boodschappen los', fq.keys['winkel'] === 'los');
+  const ff = C.fixedFree(rows, fq.keys, ['2026-03']);
+  ok('vast en vrij in maart', Math.round(ff[0].vast) === 500 && Math.round(ff[0].vrij) === 120 + 56 + 200, JSON.stringify(ff));
+  const r5 = C.rule503020(cx, C.inPeriod(rows, '2026-03', '2026-03'));
+  ok('50/30/20: Soort-kolom wint (reizen = nodig)', Math.round(r5.nodig) === 876 && Math.round(r5.wens) === 0 && Math.round(r5.sparen) === 124, JSON.stringify(r5));
+  const car = C.carCosts(rows);
+  ok('auto: tanken en parking herkend', Math.round(car.perSoort['Brandstof en laden']) === 50 && Math.round(car.perSoort['Parkeren en tol']) === 6 && Math.round(car.totaal) === 56, JSON.stringify(car.perSoort));
+  const pj = C.pockets(cx, 'SOFIE', C.inPeriod(rows, '2026-03', '2026-03'), 1, rows, 4);
+  ok('potjes: eigen tabblad, niet die van Mats', !pj.voorstel && pj.list.length === 2, JSON.stringify(pj));
+  ok('potjes: bedrag en procent van inkomen', pj.list[0].budget === 100 && Math.round(pj.list[0].uitgegeven) === 120 && Math.round(pj.list[1].budget) === 100);
+  const iv = C.investments(cx, 'SOFIE');
+  ok('ETF: ingelegd, waarde, rendement', iv.ingelegd === 200 && iv.waarde === 230 && Math.abs(iv.rendement - 0.15) < 1e-9 && iv.list[0].aantal === 2, JSON.stringify(iv));
+  ok('ETF: niets voor Mats', C.investments(cx, 'MATS') === null);
+}
 
 console.log('\n' + (n - fail) + '/' + n + ' geslaagd');
 process.exit(fail ? 1 : 0);

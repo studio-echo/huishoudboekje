@@ -8,10 +8,11 @@ var LBL = { MATS: 'Mats', SOFIE: 'Sofie', SAMEN: 'Samen' };
 var S = { view: 'MATS', per: 'maand', month: null, data: null, ctx: null, dq: null, src: '', alert: '', edit: false, wstate: {}, layouts: {}, notesOpen: false };
 var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+var PERS = ['maand', 'kwartaal', 'jaar', 'alles'], PLBL = { maand: 'Maand', kwartaal: 'Kwartaal', jaar: 'Jaar', alles: 'Alles' };
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
-(function () { var v = lsGet('hb_person'); if (C.PERSONS.indexOf(v) >= 0) S.view = v; var p = lsGet('hb_per'); if (['maand', '3m', 'vol'].indexOf(p) >= 0) S.per = p; })();
+(function () { var v = lsGet('hb_person'); if (C.PERSONS.indexOf(v) >= 0) S.view = v; var p = lsGet('hb_per'); p = { '3m': 'kwartaal', vol: 'alles' }[p] || p; if (PERS.indexOf(p) >= 0) S.per = p; })();
 
 /* ---------- laden en controleren ---------- */
 function fail(msg) { var e = new Error(msg); e.data = true; throw e; }
@@ -45,7 +46,8 @@ function validate(d) {
   return d;
 }
 function setData(d, src) {
-  S.data = validate(d); S.src = src; S.ctx = C.makeCtx(S.data); S.dq = C.dataQuality(S.ctx);
+  S.data = validate(d); S.src = src;
+  if (d.indeling && !lsGet('hb_layout_dirty')) { S.layouts = L.fromShared(d.indeling); L.ALL.forEach(function (v) { if (S.layouts[v]) lsSet('hb_layout_' + v, L.serialize(S.layouts[v])); }); } S.ctx = C.makeCtx(S.data); S.dq = C.dataQuality(S.ctx);
   var L0 = S.dq.lastComplete, ms = S.dq.months, first = CFG.EERSTE_VOLLEDIGE_MAAND || ms[0];
   if (!L0) fail('Er zijn nog geen volledige maanden in het blad.');
   if (first > L0 || first < ms[0]) first = ms[0] > L0 ? L0 : ms[0];
@@ -70,7 +72,7 @@ function load() {
       if (d && d.error === 'locked') { showLock('Te veel foute pogingen. Probeer over een kwartier opnieuw.'); return; }
       if (d && d.error) throw new Error('Het blad gaf een fout: ' + d.error);
       setData(d, 'live'); lsSet('hb_cache', JSON.stringify(d)); lsSet('hb_cache_at', new Date().toISOString());
-      $('#lock').hidden = true; render();
+      $('#lock').hidden = true; render(); pushLayout();
     }).catch(function (e) {
       var c = lsGet('hb_cache');
       if (c) {
@@ -92,20 +94,37 @@ function fatal(e) {
 $('#lockform').addEventListener('submit', function (e) { e.preventDefault(); var v = $('#pw').value; if (!v) return; lsSet('hb_pw', v); $('#pw').value = ''; $('#lock').hidden = true; load(); });
 
 /* ---------- periode ---------- */
+/* Maand, kwartaal en jaar volgen de kalender rond S.month; alles = vanaf de eerste volledige maand. */
 function period() {
-  var V = S.V, Lc = S.dq.lastComplete;
-  if (S.per === 'maand') return { kind: 'maand', from: S.month, to: S.month, n: 1, partial: S.dq.partialMonths.indexOf(S.month) >= 0 };
-  if (S.per === '3m') { var f = V.slice(-3)[0]; return { kind: '3m', from: f, to: Lc, n: C.range(f, Lc).length }; }
-  return { kind: 'vol', from: V[0], to: Lc, n: V.length };
+  var ms = S.Months, first = ms[0], last = ms[ms.length - 1], m = S.month, y = m.slice(0, 4), from, to, label;
+  if (S.per === 'maand') { from = to = m; label = F.mShort(m) + ' ' + y; }
+  else if (S.per === 'kwartaal') { var q = Math.floor((+m.slice(5) - 1) / 3); from = y + '-' + ('0' + (q * 3 + 1)).slice(-2); to = C.addM(from, 2); label = 'Q' + (q + 1) + ' ' + y; }
+  else if (S.per === 'jaar') { from = y + '-01'; to = y + '-12'; label = y; }
+  else { from = first; to = last; label = F.mShort(first) + ' tot ' + F.mShort(last); }
+  var lo = from < first, hi = to > last;
+  if (lo) from = first; if (hi) to = last;
+  var partial = S.dq.partialMonths.some(function (x) { return x >= from && x <= to; });
+  return { kind: S.per, from: from, to: to, n: C.range(from, to).length, label: label, partial: partial, atStart: from <= first, atEnd: to >= last };
 }
-function volLabel() { return F.mShort(S.V[0]) + ' tot ' + F.mShort(S.V[S.V.length - 1]); }
 
 /* ---------- indeling ---------- */
+/* De indeling staat in het blad (tabblad Indeling) en is dus op elk toestel dezelfde.
+   Lokaal bewaren we een kopie voor offline; hb_layout_dirty = nog niet naar het blad gestuurd. */
 function layout(view) {
   if (!S.layouts[view]) S.layouts[view] = L.parseSaved(lsGet('hb_layout_' + view), view) || L.defaults(view);
   return S.layouts[view];
 }
-function saveLayout(view, items) { S.layouts[view] = items; lsSet('hb_layout_' + view, L.serialize(items)); }
+function saveLayout(view, items) { S.layouts[view] = items; lsSet('hb_layout_' + view, L.serialize(items)); lsSet('hb_layout_dirty', '1'); }
+function pushLayout() {
+  if (!lsGet('hb_layout_dirty')) return;
+  var pw = lsGet('hb_pw');
+  if (S.src !== 'live' || !CFG.API_URL || !pw) { if (S.src !== 'live') lsDel('hb_layout_dirty'); return; }
+  var o = {}; L.ALL.forEach(function (v) { o[v] = layout(v); });
+  fetch(CFG.API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ p: pw, indeling: o }) })
+    .then(function (r) { return r.json(); })
+    .then(function (d) { if (d && d.ok) { lsDel('hb_layout_dirty'); S.saveErr = ''; } else throw new Error(); })
+    .catch(function () { S.saveErr = 'Indeling enkel op dit toestel bewaard. Ze gaat naar het blad zodra er verbinding is.'; status(); });
+}
 
 /* ---------- tekenen ---------- */
 var M = null;
@@ -128,17 +147,18 @@ function controls() {
     $('#controls').innerHTML = '<button class="chip add" data-act="gallery">+ Widget</button><button class="chip" data-act="reset">Standaard herstellen</button><span class="sp"></span><span class="eh">Sleep, of gebruik de pijlen</span>';
     return;
   }
-  var i = S.Months.indexOf(S.month), lopend = S.dq.partialMonths.indexOf(S.month) >= 0;
-  var h = '<div class="pgrp"><button class="chip" data-per="maand" aria-pressed="' + (S.per === 'maand') + '">Maand</button>';
-  if (S.per === 'maand') h += '<button class="step" data-st="-1" aria-label="Vorige maand"' + (i <= 0 ? ' disabled' : '') + '>‹</button><span class="mlabel">' + esc(F.mShort(S.month) + ' ' + S.month.slice(0, 4)) + (lopend ? ' <small>lopend</small>' : '') + '</span><button class="step" data-st="1" aria-label="Volgende maand"' + (i >= S.Months.length - 1 ? ' disabled' : '') + '>›</button>';
-  h += '</div><button class="chip" data-per="3m" aria-pressed="' + (S.per === '3m') + '">3 maanden</button><button class="chip" data-per="vol" aria-pressed="' + (S.per === 'vol') + '">' + esc(volLabel()) + '</button>';
+  var P = S.P, nm = { maand: 'maand', kwartaal: 'kwartaal', jaar: 'jaar' }[S.per];
+  var h = '<div class="seg per" role="tablist" aria-label="Periode">' + PERS.map(function (k) { return '<button role="tab" data-per="' + k + '" aria-selected="' + (S.per === k) + '">' + PLBL[k] + '</button>'; }).join('') + '</div>';
+  h += '<div class="pgrp">' + (nm ? '<button class="step" data-st="-1" aria-label="Vorige ' + nm + '"' + (P.atStart ? ' disabled' : '') + '>‹</button>' : '') +
+    '<span class="mlabel">' + esc(P.label) + (P.partial ? ' <small>lopend</small>' : '') + '</span>' +
+    (nm ? '<button class="step" data-st="1" aria-label="Volgende ' + nm + '"' + (P.atEnd ? ' disabled' : '') + '>›</button>' : '') + '</div>';
   $('#controls').innerHTML = h;
 }
 function status() {
   if (S.edit) { $('#status').innerHTML = ''; return; }
   var ns = S.notes.filter(function (n) { return n.level === 'note'; }), fs = S.notes.filter(function (n) { return n.level === 'foot'; });
   var h = (S.alert ? '<div class="alert slim" role="alert">' + esc(S.alert) + '</div>' : '') +
-    '<div class="sline"><span>Cijfers volledig van ' + esc(F.mShort(S.V[0]) + ' tot ' + F.mShort(S.V[S.V.length - 1]) + ' ' + S.V[S.V.length - 1].slice(0, 4)) + ' (alle rekeningen ingeladen)' + (S.dq.partialMonths.length ? ' · ' + esc(S.dq.partialMonths.map(F.mShort).join(', ')) + ' loopt nog' : '') + '.</span>';
+    (S.saveErr ? '<div class="alert slim" role="status">' + esc(S.saveErr) + '</div>' : '') + '<div class="sline"><span>Cijfers volledig van ' + esc(F.mShort(S.V[0]) + ' tot ' + F.mShort(S.V[S.V.length - 1]) + ' ' + S.V[S.V.length - 1].slice(0, 4)) + ' (alle rekeningen ingeladen)' + (S.dq.partialMonths.length ? ' · ' + esc(S.dq.partialMonths.map(F.mShort).join(', ')) + ' loopt nog' : '') + '.</span>';
   if (ns.length || fs.length) h += ' <button class="slink" data-act="notes" aria-expanded="' + S.notesOpen + '">' + (ns.length ? ns.length + ' aandachtspunt' + (ns.length > 1 ? 'en' : '') : fs.length + ' voetnoot' + (fs.length > 1 ? 'en' : '')) + ' <span aria-hidden="true">' + (S.notesOpen ? '▴' : '▾') + '</span></button>';
   h += '</div>';
   if (S.notesOpen) h += '<ul class="notes">' + ns.concat(fs).map(function (n) { return '<li' + (n.level === 'foot' ? ' class="ft"' : '') + '>' + esc(n.text) + '</li>'; }).join('') + '</ul>';
@@ -187,6 +207,7 @@ function relayout(items, focusSel) {
   if (focusSel) { var f = $(focusSel); if (f) f.focus(); }
 }
 function setEdit(on) {
+  if (S.edit && !on) pushLayout();
   S.edit = on; S.notesOpen = false; render();
   if (on) announce('Bewerkmodus. Versleep tegels of gebruik de pijlen. Tik op Klaar als je klaar bent.');
 }
@@ -199,7 +220,12 @@ document.addEventListener('click', function (e) {
   var d = t.dataset, items = S.data ? layout(S.view) : [];
   if (d.p) { S.view = d.p; lsSet('hb_person', S.view); render(); }
   else if (d.per) { S.per = d.per; lsSet('hb_per', S.per); render(); }
-  else if (d.st) { var i = S.Months.indexOf(S.month) + (+d.st); if (i >= 0 && i < S.Months.length) { S.month = S.Months[i]; render(); } }
+  else if (d.st) {
+    var stp = { maand: 1, kwartaal: 3, jaar: 12 }[S.per] * (+d.st), nx = C.addM(S.month, stp), ms = S.Months;
+    if (nx < ms[0]) nx = ms[0]; if (nx > ms[ms.length - 1]) nx = ms[ms.length - 1];
+    S.month = nx; render();
+  }
+  else if (d.dd && !S.edit) { var r0 = W.drill(M, d.dd); if (r0) openSheet(r0.title, r0.html); }
   else if (d.month && !S.edit) { S.month = d.month; S.per = 'maand'; lsSet('hb_per', S.per); render(); announce(F.mLong(d.month, true) + ' gekozen'); }
   else if (d.wt && !S.edit) { var p = d.wt.split(':'); S.wstate[p[0]] = p[1]; render(); }
   else if (d.more && !S.edit) showMore(d.more);
@@ -215,9 +241,6 @@ document.addEventListener('click', function (e) {
   else if (d.act === 'reload') { closeSheet(); load(); }
   else if (d.act === 'close') closeSheet();
   else if (d.act === 'theme') { var th = lsGet('hb_theme') || 'auto'; lsSet('hb_theme', th === 'auto' ? 'light' : th === 'light' ? 'dark' : 'auto'); applyTheme(); menu(); }
-  else if (d.act === 'copy') copyCode();
-  else if (d.act === 'paste') pasteCode();
-  else if (d.act === 'apply') applyCode();
   else if (d.act === 'forget') { lsDel('hb_pw'); lsDel('hb_cache'); lsDel('hb_cache_at'); closeSheet(); load(); }
 });
 document.addEventListener('keydown', function (e) {
@@ -257,28 +280,10 @@ function menu() {
   openSheet('Instellingen', '<div class="mn">' +
     '<button class="btn" data-act="theme">Thema: ' + lab[th] + '</button>' +
     '<button class="btn" data-act="reload">Gegevens vernieuwen</button>' +
-    '<button class="btn" data-act="copy">Kopieer layoutcode</button>' +
-    '<button class="btn" data-act="paste">Plak layoutcode</button>' +
-    (CFG.API_URL ? '<button class="btn" data-act="forget">Wachtwoord vergeten op dit toestel</button>' : '') +
-    '<p class="nt">De layoutcode bevat enkel de indeling van Mats, Sofie en Samen, geen cijfers. Kopieer hem hier en plak hem op een ander toestel.</p></div>');
-}
-function copyCode() {
-  var code = L.encode({ MATS: layout('MATS'), SOFIE: layout('SOFIE'), SAMEN: layout('SAMEN') });
-  var done = function () { openSheet('Layoutcode gekopieerd', '<p class="nt">Plak hem op het andere toestel via Instellingen, Plak layoutcode.</p><textarea class="code" readonly rows="4" aria-label="Layoutcode">' + esc(code) + '</textarea>'); };
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, function () { openSheet('Kopieer deze code', '<textarea class="code" readonly rows="4" aria-label="Layoutcode">' + esc(code) + '</textarea>'); var ta = $('.code'); ta.focus(); ta.select(); });
-  else { openSheet('Kopieer deze code', '<textarea class="code" readonly rows="4" aria-label="Layoutcode">' + esc(code) + '</textarea>'); var ta = $('.code'); ta.focus(); ta.select(); }
-}
-function pasteCode() {
-  openSheet('Plak layoutcode', '<textarea class="code" id="codein" rows="4" placeholder="HB2..." aria-label="Layoutcode"></textarea><p class="err" id="codeerr" role="alert"></p><button class="btn pri" data-act="apply">Indeling overnemen</button>');
-}
-function applyCode() {
-  try {
-    var o = L.decode($('#codein').value);
-    Object.keys(o).forEach(function (v) { saveLayout(v, o[v]); });
-    closeSheet(); render(); announce('Indeling overgenomen');
-  } catch (e) { $('#codeerr').textContent = e.message; }
-}
 
+    (CFG.API_URL ? '<button class="btn" data-act="forget">Wachtwoord vergeten op dit toestel</button>' : '') +
+    '<p class="nt">De indeling van de tegels staat in het blad, in het tabblad Indeling. Wat je hier aanpast, zie je op elk toestel.</p></div>');
+}
 /* ---------- lang drukken en slepen (pointer events, werkt ook op iPad) ---------- */
 var press = null, drag = null, suppressClick = false;
 function tileOf(el) { return el && el.closest ? el.closest('#grid .w') : null; }
@@ -368,4 +373,5 @@ applyTheme();
 window.addEventListener('online', function () { if (S.src === 'cache') load(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function () {});
 load();
+window.addEventListener('online', pushLayout);
 })();

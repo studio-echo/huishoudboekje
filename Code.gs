@@ -5,14 +5,24 @@
  */
 var SHEET_ID = ''; // leeg laten als dit script in het blad zelf is aangemaakt (Extensies > Apps Script)
 var TABS = { transacties: 'Transacties', rekeningen: 'Rekeningen', categorieen: 'Categorieen', saldi: 'Saldi' };
+/* Optionele tabbladen: ontbreken mag. Indeling bewaart de tegels van het dashboard (wordt door de site zelf geschreven). */
+var OPTIONAL = { potjes: 'Potjes', beleggingen: 'Beleggingen' };
+var LAYOUT_TAB = 'Indeling';
 var MAX_FAILS = 8, LOCK_SECONDS = 900;
 
-function doGet(e) {
+function doGet(e) { return handle_(e, null); }
+/* POST met een tekst-body {"indeling": {...}} bewaart de indeling. Zelfde wachtwoordcontrole. */
+function doPost(e) {
+  var body = {};
+  try { body = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (x) { return out_({ error: 'bad request' }); }
+  return handle_(e, body);
+}
+function handle_(e, body) {
   var cache = CacheService.getScriptCache();
   var fails = parseInt(cache.get('fails') || '0', 10);
   if (fails >= MAX_FAILS) return out_({ error: 'locked' });
   var pw = PropertiesService.getScriptProperties().getProperty('PASSWORD');
-  var given = (e && e.parameter && e.parameter.p) || '';
+  var given = (body && body.p) || (e && e.parameter && e.parameter.p) || '';
   if (!pw || !safeEq_(given, pw)) {
     cache.put('fails', String(fails + 1), LOCK_SECONDS);
     Utilities.sleep(1000);
@@ -22,7 +32,18 @@ function doGet(e) {
   try {
     var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
     var res = {};
+    if (body) {
+      var txt = JSON.stringify(body.indeling || null);
+      if (txt.length > 20000) return out_({ error: 'indeling te groot' });
+      var lt = ss.getSheetByName(LAYOUT_TAB) || ss.insertSheet(LAYOUT_TAB);
+      lt.getRange('A1').setValue('Niet aanpassen: indeling van het dashboard');
+      lt.getRange('A2').setValue(txt);
+      return out_({ ok: true });
+    }
     Object.keys(TABS).forEach(function (k) { res[k] = rows_(ss.getSheetByName(TABS[k]), TABS[k]); });
+    Object.keys(OPTIONAL).forEach(function (k) { var sh = ss.getSheetByName(OPTIONAL[k]); res[k] = sh ? rows_(sh, OPTIONAL[k]) : []; });
+    var ls = ss.getSheetByName(LAYOUT_TAB);
+    if (ls) { try { res.indeling = JSON.parse(String(ls.getRange('A2').getValue() || 'null')); } catch (x) { res.indeling = null; } }
     res.bijgewerkt = new Date().toISOString();
     return out_(res);
   } catch (err) {

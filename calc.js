@@ -338,6 +338,141 @@
     return { saldo: tot, datum: dates[0], tot: dates[dates.length - 1], perMaand: spend, maanden: spend > 0 ? tot / spend : null, rekeningen: parts };
   }
 
+  /* ---------- hoe vaak komt een uitgave terug ---------- */
+  /* Per tegenpartij: maandelijks (herkend als vaste last), per kwartaal (ongeveer om de 3 maanden),
+     jaarlijks (verzekering, taks en dergelijke, of een groot bedrag dat in de reeks maar 1 keer voorkomt
+     buiten de variabele categorieen) en los (de rest: boodschappen, restaurant, winkels). */
+  var YEARLY_RX = /verzeker|insurance|vivium|ethias|belasting|taks|\btax\b|spf fin|fod fin|lidgeld|jaarbijdrage|jaarabonnement|mutualiteit|helan|onderhoud ketel|keuring/;
+  function monthGap(a, b) { return (+b.slice(0, 4) - +a.slice(0, 4)) * 12 + (+b.slice(5) - +a.slice(5)); }
+  function frequency(rows, recKeys) {
+    var g = {};
+    rows.forEach(function (x) {
+      if (x.t !== 'uitgave') return;
+      var k = counterparty(x.r) || '?';
+      (g[k] = g[k] || []).push(x);
+    });
+    var out = { maandelijks: 0, kwartaal: 0, jaarlijks: 0, los: 0 }, keys = {};
+    Object.keys(g).forEach(function (k) {
+      var xs = g[k], ms = {}, tot = 0;
+      xs.forEach(function (x) { ms[x.m] = 1; tot -= x.a; });
+      var mk = Object.keys(ms).sort(), kind = 'los', var_ = NOT_FIXED[xs[0].r.Categorie];
+      var raw = norm((xs[0].r.Tegenpartij || '') + ' ' + (xs[0].r.Omschrijving || '') + ' ' + xs[0].r.Categorie);
+      if (recKeys && recKeys[k]) kind = 'maandelijks';
+      else if (!var_ && mk.length >= 2 && mk.every(function (m, i) { return !i || Math.abs(monthGap(mk[i - 1], m) - 3) <= 1; })) kind = 'kwartaal';
+      else if (!var_ && (YEARLY_RX.test(raw) || xs[0].r.Categorie === 'Administratie & overheid') && mk.length <= 2) kind = 'jaarlijks';
+      if (tot < 0) kind = 'los';
+      out[kind] += tot; keys[k] = kind;
+    });
+    out.keys = keys;
+    return out;
+  }
+  /* Vast of vrij per maand: vast = alles wat terugkomt (maandelijks, kwartaal, jaarlijks), vrij = de rest */
+  function fixedFree(rows, freqKeys, ms) {
+    return ms.map(function (m) {
+      var v = 0, f = 0;
+      rows.forEach(function (x) {
+        if (x.m !== m || x.t !== 'uitgave') return;
+        var k = freqKeys[counterparty(x.r) || '?'];
+        if (k && k !== 'los') v -= x.a; else f -= x.a;
+      });
+      return { m: m, vast: v, vrij: f };
+    });
+  }
+
+  /* ---------- 50/30/20 ---------- */
+  /* Nodig (50%), wens (30%), sparen en overschot (20%). Kolom Soort in Categorieen (nodig/wens) wint. */
+  var NEEDS = { 'Woonkost': 1, 'Boodschappen': 1, 'Mobiliteit & parking': 1, 'Gezondheid': 1, 'Administratie & overheid': 1 };
+  function needKind(ctx, cat) {
+    var c = (ctx.data.categorieen || []).filter(function (x) { return x.Categorie === cat; })[0];
+    var s = c ? String(c.Soort || '').toLowerCase() : '';
+    if (/nodig|behoefte|need/.test(s)) return 'nodig';
+    if (/wens|want|luxe/.test(s)) return 'wens';
+    return NEEDS[cat] ? 'nodig' : 'wens';
+  }
+  function rule503020(ctx, rows) {
+    var inc = 0, nodig = 0, wens = 0, cats = { nodig: {}, wens: {} };
+    rows.forEach(function (x) {
+      if (x.t === 'inkomen') inc += x.a;
+      else if (x.t === 'uitgave') { var k = needKind(ctx, x.r.Categorie); if (k === 'nodig') nodig -= x.a; else wens -= x.a; cats[k][x.r.Categorie] = (cats[k][x.r.Categorie] || 0) - x.a; }
+    });
+    return { inkomen: inc, nodig: nodig, wens: wens, sparen: inc - nodig - wens, cats: cats };
+  }
+
+  /* ---------- auto ---------- */
+  /* Herkend op naam van winkel of omschrijving, want er is geen categorie Auto. */
+  var CAR = [
+    ['Brandstof en laden', /\b(total|totalenergies|q8|esso|shell|lukoil|dats ?24|texaco|gabriels|gulf|octa|aral|bp|allego|ionity|fastned|shell recharge|tankstation|tanken|brandstof)\b/],
+    ['Onderhoud en herstel', /garage|toyota|volkswagen|peugeot|renault|kia|hyundai|skoda|carglass|autokeuring|keuring|banden|vulco|norauto|midas|carwash|car wash|autowas|\bvab\b|touring/],
+    ['Verzekering en taks', /autoverzekering|verzekering auto|omnium|verkeersbelasting|inschrijvingstaks|\bbiv\b|vlaamse belastingdienst|vlabel/],
+    ['Parkeren en tol', /parking|parkeer|q ?park|interparking|indigo|seety|4411|tol |peage|vignet|arrive|stationnement/]
+  ];
+  function carKind(r) {
+    var s = norm((r.Tegenpartij || '') + ' ' + (r.Omschrijving || '') + ' ' + (r.Nota || ''));
+    for (var i = 0; i < CAR.length; i++) if (CAR[i][1].test(s)) return CAR[i][0];
+    return null;
+  }
+  function carCosts(rows) {
+    var o = {}, list = [];
+    CAR.forEach(function (c) { o[c[0]] = 0; });
+    rows.forEach(function (x) {
+      if (x.t !== 'uitgave') return;
+      var k = carKind(x.r); if (!k) return;
+      o[k] -= x.a; list.push(x);
+    });
+    var tot = Object.keys(o).reduce(function (a, k) { return a + o[k]; }, 0);
+    return { perSoort: o, totaal: tot, rows: list };
+  }
+
+  /* ---------- potjes ---------- */
+  /* Tabblad Potjes: Naam, Categorieen (komma's), Bedrag (per maand) of Procent (van inkomen), Wie.
+     Zonder tabblad: een voorstel op basis van de 3 grootste categorieen (gemiddelde, afgerond naar boven op 50). */
+  function pockets(ctx, view, rows, nMonths, avgRows, avgN) {
+    var tab = (ctx.data.potjes || []).filter(function (p) {
+      var w = String(p.Wie || '').toUpperCase(); return p.Naam && (!w || w === view || w === 'IEDEREEN' || w === 'ALLE');
+    });
+    var inc = metrics(rows).inkomen / (nMonths || 1), voorstel = false;
+    var spend = function (rs, cats) {
+      var s = 0; rs.forEach(function (x) { if (x.t === 'uitgave' && cats.indexOf(x.r.Categorie) >= 0) s -= x.a; }); return s;
+    };
+    if (!tab.length) {
+      voorstel = true;
+      tab = byCategory(avgRows).filter(function (c) { return NOT_FIXED[c.cat] && c.cat !== 'Varia'; }).slice(0, 4).map(function (c) { return { Naam: c.cat, Categorieen: c.cat, Bedrag: Math.ceil(c.bedrag / (avgN || 1) / 50) * 50 }; });
+    }
+    return { voorstel: voorstel, list: tab.map(function (p) {
+      var cats = String(p.Categorieen || p.Naam).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+      var pct = +String(p.Procent || '').replace('%', '').replace(',', '.') || 0; if (pct > 1) pct /= 100;
+      var budget = +String(p.Bedrag || '').replace(',', '.') || 0;
+      if (!budget && pct) budget = pct * inc;
+      return { naam: String(p.Naam), cats: cats, budget: budget, procent: pct || null, uitgegeven: spend(rows, cats) / (nMonths || 1) };
+    }).filter(function (p) { return p.budget > 0; }) };
+  }
+
+  /* ---------- beleggingen (ETF) ---------- */
+  /* Tabblad Beleggingen: Datum, ETF, Soort (aankoop | waarde), Bedrag, Aantal, Wie.
+     aankoop = wat je betaalde; waarde = de waarde van die ETF op die datum (bv. van MeDirect overgetypt). */
+  function investments(ctx, view) {
+    var rows = (ctx.data.beleggingen || []).filter(function (r) {
+      var w = String(r.Wie || '').toUpperCase(); return r.ETF && r.Datum && (view === 'SAMEN' || !w || w === view || w === 'SAMEN');
+    });
+    if (!rows.length) return null;
+    var f = function (r) { var w = String(r.Wie || '').toUpperCase(); return view !== 'SAMEN' && (!w || w === 'SAMEN') ? 0.5 : 1; };
+    var by = {}, dates = {};
+    rows.forEach(function (r) {
+      var e = by[r.ETF] = by[r.ETF] || { etf: r.ETF, ingelegd: 0, aantal: 0, waarde: null, datum: null, hist: [] };
+      var soort = String(r.Soort || 'aankoop').toLowerCase(), b = Math.abs(+r.Bedrag || 0) * f(r), d = String(r.Datum).slice(0, 10);
+      if (/waarde|koers/.test(soort)) { e.hist.push({ d: d, v: b }); if (!e.datum || d >= e.datum) { e.waarde = b; e.datum = d; } dates[d] = 1; }
+      else if (/verkoop/.test(soort)) { e.ingelegd -= b; e.aantal -= (+r.Aantal || 0) * f(r); }
+      else { e.ingelegd += b; e.aantal += (+r.Aantal || 0) * f(r); }
+    });
+    var list = Object.keys(by).map(function (k) { var e = by[k]; if (e.waarde == null) e.waarde = e.ingelegd; return e; }).sort(function (a, b) { return b.waarde - a.waarde; });
+    /* totale waarde door de tijd: per waarde-datum de laatst gekende waarde van elke ETF */
+    var hist = Object.keys(dates).sort().map(function (d) {
+      return { d: d, v: list.reduce(function (s, e) { var h = e.hist.filter(function (x) { return x.d <= d; }).sort(function (a, b) { return a.d < b.d ? -1 : 1; }).pop(); return s + (h ? h.v : 0); }, 0) };
+    });
+    var waarde = list.reduce(function (a, e) { return a + e.waarde; }, 0), ingelegd = list.reduce(function (a, e) { return a + e.ingelegd; }, 0);
+    return { list: list, waarde: waarde, ingelegd: ingelegd, winst: waarde - ingelegd, rendement: ingelegd > 0 ? (waarde - ingelegd) / ingelegd : null, hist: hist };
+  }
+
   /* ---------- notities over de data ---------- */
   /* level 'alert' = echte onderbreking, 'note' = aandachtspunt, 'foot' = voetnoot (enkel in Dataoverzicht) */
   function notes(ctx, dq, view, from, to) {
@@ -365,6 +500,8 @@
     byMonth: byMonth, byCategory: byCategory, catAvgPrev: catAvgPrev, recurring: recurring, isLoan: isLoan, usage: usage,
     topCounterparties: topCounterparties, largest: largest, householdSplit: householdSplit, fairness: fairness,
     counterparty: counterparty, incomeFlow: incomeFlow, byWeekday: byWeekday, buffer: buffer, notes: notes,
-    hasOwnAccounts: hasOwnAccounts, cleanName: cleanName, jointIds: jointIds, median: median
+    hasOwnAccounts: hasOwnAccounts, cleanName: cleanName, jointIds: jointIds, median: median,
+    frequency: frequency, fixedFree: fixedFree, rule503020: rule503020, needKind: needKind, carKind: carKind, carCosts: carCosts,
+    pockets: pockets, investments: investments, monthGap: monthGap
   };
 });

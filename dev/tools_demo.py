@@ -35,6 +35,9 @@ for i, mo in enumerate(months):
     add(p + "07", S, "Abonnementen", -8.99, 0, 1, 0, "Streaming (demo)")
     add(p + "08", M, "Mobiliteit & parking", -38, 1, 0, 0, "Verzekering (demo)")
     add(p + "09", S, "Sport & hobby", -32, 0, 1, 0, "Sportclub (demo)")
+    add(day(p), S, "Mobiliteit & parking", -round(random.uniform(55, 75), 2), 0, 1, 0, "Tankstation (demo)", "Tanken")
+    if i % 2: add(day(p), S, "Mobiliteit & parking", -round(random.uniform(4, 12), 2), 0, 1, 0, "Parking centrum (demo)")
+    if mo in ("2026-04", "2026-07"): add(p + "15", S, "Woonkost", -42.5, 0, 1, 0, "Waterfactuur (demo)", "Kwartaalfactuur")
     if mo <= "2026-07":
         add(p + "06", M, "Mobiliteit & parking", -120, 1, 0, 0, "Rekening vader", "Afbetaling fiets")
     for _ in range(4 if not last else 1):
@@ -59,8 +62,20 @@ for i, mo in enumerate(months):
         add(p + "20", G, "Reizen", -1450, .5, .5, 1, "Reisbureau (demo)", "Zomerreis")
     if mo == "2026-09":
         add(p + "12", S, "Gezondheid", -240, 0, 1, 1, "Tandarts (demo)")
+    if mo == "2026-05":
+        add(p + "10", S, "Mobiliteit & parking", -310, 0, 1, 0, "Garage (demo)", "Onderhoud auto")
+        add(p + "11", S, "Administratie & overheid", -165, 0, 1, 0, "Verkeersbelasting (demo)")
 SAL = [{"Rekening_ID": M, "Datum": "2026-09-30", "Saldo": 2850.0}, {"Rekening_ID": S, "Datum": "2026-09-30", "Saldo": 3420.0},
        {"Rekening_ID": G, "Datum": "2026-09-30", "Saldo": 1240.0}]
-out = {"transacties": T, "rekeningen": REK, "categorieen": [{"Categorie": c, "Type": t} for c, t in CATS], "saldi": SAL}
+POT = [{"Naam": "Boodschappen", "Categorieen": "Boodschappen", "Bedrag": 180, "Wie": "Samen"},
+       {"Naam": "Uit eten", "Categorieen": "Horeca & delivery", "Bedrag": 120, "Wie": ""},
+       {"Naam": "Shopping", "Categorieen": "Shopping & aankopen, Persoonlijke verzorging", "Procent": "3%", "Wie": ""}]
+BEL = []
+for i, mo in enumerate(months[:-1]):
+    BEL.append({"Datum": mo + "-05", "ETF": "Wereld-ETF (demo)", "Soort": "aankoop", "Bedrag": 200, "Aantal": 2, "Wie": "Samen"})
+    BEL.append({"Datum": mo + "-28", "ETF": "Wereld-ETF (demo)", "Soort": "waarde", "Bedrag": round(200 * (i + 1) * (1 + 0.012 * i + random.uniform(-.02, .02)), 2), "Wie": "Samen"})
+    BEL.append({"Datum": mo + "-28", "ETF": "Opkomende markten (demo)", "Soort": "waarde", "Bedrag": round(1000 * (1 + random.uniform(-.05, .06)), 2), "Wie": "Mats"})
+BEL.append({"Datum": "2026-02-10", "ETF": "Opkomende markten (demo)", "Soort": "aankoop", "Bedrag": 1000, "Aantal": 30, "Wie": "Mats"})
+out = {"transacties": T, "potjes": POT, "beleggingen": BEL, "rekeningen": REK, "categorieen": [{"Categorie": c, "Type": t} for c, t in CATS], "saldi": SAL}
 json.dump(out, open(sys.argv[1] if len(sys.argv) > 1 else "data/demo.json", "w"), ensure_ascii=False, indent=0)
 print(len(T), "rijen")

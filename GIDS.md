@@ -35,7 +35,18 @@ Meer is er niet.
 
 ## D. Indeling (widgets)
 - Tik op **Bewerk** of druk lang op een tegel. Sleep aan de greep (⠿), of gebruik de pijlen. Met S, M en L kies je de grootte, met − verwijder je een tegel, met **+ Widget** voeg je er een toe. **Standaard herstellen** zet de indeling van die weergave terug. **Klaar** sluit af.
-- De indeling wordt per toestel en per weergave bewaard. Naar een ander toestel: menu (de drie puntjes) > **Kopieer layoutcode**, en op het andere toestel > **Plak layoutcode**. De code bevat geen cijfers.
+- De indeling staat in het blad, in het tabblad **Indeling** (dat maakt de site zelf aan). Pas je ze aan op de iPad, dan zie je hetzelfde op je gsm. Niet met de hand aanpassen.
+- Daarvoor moet het nieuwe Code.gs in Apps Script staan: plak het volledige bestand over het oude en kies **Implementeren > Implementaties beheren > bewerken > Nieuwe versie**. De link blijft dezelfde.
+- Tik op een rij (categorie, potje, autokost, vaste last) of op Vast en Vrij om de betalingen erachter te zien.
+
+## D2. Optionele tabbladen
+- **Potjes**: kolommen Naam, Categorieen (met komma's), Bedrag (per maand) of Procent (van het inkomen), Wie (Mats, Sofie, Samen of leeg = iedereen). Zonder tabblad toont de tegel een voorstel.
+- **Beleggingen**: Datum, ETF, Soort, Bedrag, Aantal, Wie. Soort = aankoop (wat je betaalde) of waarde (wat de ETF die dag waard is, bv. overgetypt van MeDirect, één keer per maand).
+- **Categorieen**, optionele kolom **Soort**: nodig of wens, voor de 50/30/20-tegel. Leeg = standaard (wonen, boodschappen, vervoer, gezondheid en administratie zijn nodig).
+- De autotegel herkent kosten op naam (tankstation, garage, parking). Verzekering of taks die via een andere rekening loopt, ziet hij niet.
+
+## Later
+- Maandelijkse samenvatting door AI. Claude Pro geeft geen API-sleutel; dat vraagt een apart betaald account op console.anthropic.com.
 
 ## E. Onderhoud en grenzen
 - **Wachtwoord wijzigen**: Script-eigenschap aanpassen; iedereen moet het opnieuw ingeven (menu (de drie puntjes) > Wachtwoord vergeten op dit toestel).

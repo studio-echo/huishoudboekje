@@ -29,6 +29,12 @@
     { id: 'buffer', naam: 'Buffer', h: H1, views: ALL },
     { id: 'spaardoel', naam: 'Spaardoel-voortgang', h: H1, views: ALL },
     { id: 'dataoverzicht', naam: 'Dataoverzicht', h: H2, views: ALL },
+    { id: 'vastvrij', naam: 'Vast versus vrij', h: H2, views: ALL },
+    { id: 'ritme', naam: 'Hoe vaak komt het terug', h: H2, views: ALL },
+    { id: 'regel', naam: '50/30/20-regel', h: H2, views: ALL },
+    { id: 'potjes', naam: 'Potjes', h: H3, views: ALL },
+    { id: 'auto', naam: 'Wat kost de auto', h: H2, views: ALL },
+    { id: 'beleggingen', naam: 'Beleggingen (ETF)', h: { S: 1, M: 1, L: 2 }, views: ALL },
     { id: 'eerlijkheid', naam: 'Eerlijkheidsmeter', h: H2, views: ['SAMEN'] },
     { id: 'gedeeld', naam: 'Gedeeld versus persoonlijk', h: H2, views: ['SAMEN'] }
   ];
@@ -36,9 +42,10 @@
   CATALOG.forEach(function (w) { BY_ID[w.id] = w; });
 
   var PERSON_DEFAULT = [
-    ['resultaat', 'L'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gespaard', 'S'], ['spaarratio', 'S'],
-    ['maandverloop', 'L'], ['categorieen', 'M'], ['inkomenflow', 'M'], ['spaardoel', 'S'], ['buffer', 'S'],
-    ['gemiddelde', 'M'], ['vastelasten', 'M'], ['opvallend', 'M'], ['dataoverzicht', 'L']
+    ['resultaat', 'L'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gespaard', 'S'], ['spaarratio', 'S'], ['maandverloop', 'L'],
+    ['categorieen', 'M'], ['inkomenflow', 'M'], ['spaardoel', 'S'], ['buffer', 'S'], ['beleggingen', 'M'], ['regel', 'M'],
+    ['vastvrij', 'M'], ['vastelasten', 'M'], ['ritme', 'M'], ['auto', 'M'], ['gemiddelde', 'M'], ['opvallend', 'M'], ['potjes', 'M'],
+    ['dataoverzicht', 'L']
   ];
   var DEFAULTS = {
     MATS: PERSON_DEFAULT,
@@ -46,7 +53,8 @@
     SAMEN: [
       ['resultaat', 'L'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gespaard', 'S'], ['spaarratio', 'S'],
       ['eerlijkheid', 'M'], ['gedeeld', 'M'], ['maandverloop', 'L'], ['inkomenflow', 'M'], ['vastelasten', 'M'],
-      ['donut', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['gemiddelde', 'M'], ['opvallend', 'L'], ['dataoverzicht', 'L']
+      ['buffer', 'S'], ['spaardoel', 'S'], ['donut', 'M'], ['vastvrij', 'M'], ['regel', 'M'], ['potjes', 'M'], ['ritme', 'M'],
+      ['auto', 'M'], ['beleggingen', 'M'], ['gemiddelde', 'M'], ['opvallend', 'L'], ['dataoverzicht', 'L']
     ]
   };
 
@@ -70,6 +78,13 @@
       var items = clean(o.items, view);
       return items.length ? items : null;
     } catch (e) { return null; }
+  }
+  /* Gedeelde indeling uit het blad: { MATS: [{id,size}], SOFIE: [...], SAMEN: [...] } */
+  function fromShared(o) {
+    var out = {};
+    if (!o || typeof o !== 'object') return out;
+    ALL.forEach(function (v) { var it = clean(o[v], v); if (it.length) out[v] = it; });
+    return out;
   }
   function serialize(items) { return JSON.stringify({ v: VERSION, items: items.map(function (x) { return { id: x.id, size: x.size }; }) }); }
   function gallery(items, view) {
@@ -125,6 +140,6 @@
   return {
     VERSION: VERSION, SIZES: SIZES, CATALOG: CATALOG, BY_ID: BY_ID, DEFAULTS: DEFAULTS,
     allowed: allowed, defaults: defaults, clean: clean, parseSaved: parseSaved, serialize: serialize,
-    gallery: gallery, move: move, nextSize: nextSize, height: height, encode: encode, decode: decode
+    gallery: gallery, fromShared: fromShared, ALL: ALL, move: move, nextSize: nextSize, height: height, encode: encode, decode: decode
   };
 });

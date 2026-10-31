@@ -28,17 +28,27 @@ button{font:inherit;color:inherit;cursor:pointer}
 /* ---------- kop en filters ---------- */
 .top{display:flex;gap:8px;align-items:center;padding:calc(env(safe-area-inset-top) + 10px) 0 8px;position:sticky;top:0;z-index:20;
   background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
-.seg{display:flex;flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
-.seg button{flex:1;min-width:0;min-height:44px;border:0;border-radius:999px;background:none;color:var(--muted);font-weight:650;font-size:15px}
-.seg button[aria-selected=true]{background:var(--c);color:var(--on)}
+/* Gesegmenteerde knop in Apple-stijl: grijze baan, witte schuif. Visueel 32px, de tikzone loopt 6px verder. */
+.seg{display:flex;min-width:0;background:color-mix(in srgb,var(--ink) 8%,transparent);border-radius:10px;padding:2px;gap:2px;flex:0 1 330px;margin-right:auto}
+.seg button{position:relative;flex:1;min-width:0;height:32px;border:0;border-radius:8px;background:none;color:var(--ink);font-weight:550;font-size:13px;white-space:nowrap}
+.seg button::after{content:"";position:absolute;inset:-6px 0}
+.seg button[aria-selected=true]{background:var(--card);font-weight:650;box-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04)}
+.seg button[aria-selected=true]::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--c);margin-right:6px;vertical-align:1px}
+.seg.per{flex:0 1 330px}.seg.per button[aria-selected=true]::before{display:none}
+#edit,.top .ib{min-height:36px;min-width:36px;font-size:14px}
+/* kleinere knoppen houden een tikzone van 44px via ::after */
+.step,.lk,#edit,.top .ib{position:relative}
+.step::after,#edit::after,.top .ib::after{content:"";position:absolute;inset:-4px}
+.lk::after{content:"";position:absolute;inset:-6px 0}
+.top .ib{font-size:18px}
 .ib{min-width:44px;min-height:44px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:20px;line-height:1}
 .chip,.btn{min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:600;font-size:14px;white-space:nowrap}
 .chip[aria-pressed=true],#edit.on,.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--on)}
-.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0 4px}
+.bar{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;padding:6px 0 4px}
 .pgrp{display:flex;align-items:center;gap:4px}
-.step{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--card);font-size:20px}
+.step{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--card);font-size:20px}
 .step[disabled]{opacity:.35;cursor:default}
-.mlabel{min-width:76px;text-align:center;font-weight:650;font-size:15px;line-height:1.1}
+.mlabel{min-width:84px;text-align:center;font-weight:650;font-size:15px;line-height:1.1}
 .mlabel small{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .bar .sp{flex:1}.eh{font-size:13px;color:var(--muted)}
 #status{padding:2px 0 12px}
@@ -105,6 +115,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .bars .col.sel .cl{color:var(--ink);font-weight:700}
 .bars button.col:hover{background:var(--card2)}
 /* minstens 44px per maand: smalle kaarten tonen de recentste maanden */
+@container (max-width:379px){.bars:not(.wk) .col:nth-last-child(n+8){display:none}}
 @container (max-width:331px){.bars:not(.wk) .col:nth-last-child(n+7){display:none}}
 @container (max-width:283px){.bars:not(.wk) .col:nth-last-child(n+6){display:none}}
 @container (max-width:235px){.bars:not(.wk) .col:nth-last-child(n+5){display:none}}
@@ -139,6 +150,26 @@ button{font:inherit;color:inherit;cursor:pointer}
 .frb.thin{height:5px}.frb.thin i{background:var(--muted)}
 .frl{font-size:12px;color:var(--muted)}
 
+/* vast en vrij gestapeld */
+.bars.stk .cb{flex-direction:column-reverse;align-items:center;justify-content:flex-start;gap:2px}
+.bars.stk .cb i{width:62%;max-width:30px;border-radius:2px}
+.bars.stk .cb .a{background:var(--accent);border-radius:2px}
+.bars.stk .cb .b{background:color-mix(in srgb,var(--accent) 38%,var(--track));border-radius:6px 6px 2px 2px}
+.bars.stk .cb i[style*="height:0.0%"]{display:none}
+.bars.stk .col:not(.sel){opacity:.5}
+.lk{background:none;border:0;font:inherit;color:var(--ink);font-size:13px;font-weight:600;min-height:32px;padding:0}
+.bars.dd{height:110px;flex:none;margin:12px 0 8px;background:var(--card);border-radius:18px;padding:10px 10px 6px}
+/* 50/30/20 en potjes */
+.rule{display:flex;flex-direction:column;justify-content:space-around;flex:1;min-height:0}
+.rr{display:flex;flex-direction:column;gap:5px;text-align:left}
+.rh{display:flex;justify-content:space-between;gap:8px;font-size:13px}.rh small{color:var(--muted);font-weight:500}
+.rh span{font-weight:650;white-space:nowrap}
+.rb{position:relative;height:8px;border-radius:99px;background:var(--track);display:block}
+.rb i{position:absolute;inset:0 auto 0 0;border-radius:99px;background:var(--accent)}
+.rb b{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--ink);transform:translateX(-50%)}
+.pots li{border:0;padding:3px 0}
+.pj{flex-direction:column;align-items:stretch!important;gap:5px!important}
+.spk{flex:1;min-width:0;height:100%;display:flex}
 /* lijsten */
 .list{list-style:none;display:flex;flex-direction:column;min-height:0;overflow:hidden;flex:0 1 auto}
 .sc .list{overflow:visible}
@@ -148,6 +179,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 .accs .lt{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.accs .ls{font-size:12px;color:var(--muted)}
 .list li{display:flex;align-items:center;gap:10px;min-height:42px;padding:4px 0;border-top:1px solid var(--line)}
 .list li:first-child{border-top:0}
+.lrow{display:flex;align-items:center;gap:10px;width:100%;min-height:inherit;background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit;border-radius:8px}
+.lrow:hover{background:var(--card2)}
+.list li:has(>.lrow){padding:0}
+button.rr{background:none;border:0;padding:4px 0;color:inherit;font:inherit;border-radius:8px}
 .ln{flex:1;min-width:0;display:flex;align-items:center;gap:0}
 .ln .lt{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
 .ln:has(.ls){flex-direction:column;align-items:flex-start;justify-content:center}
@@ -215,4 +250,9 @@ input{min-height:52px;border-radius:14px;border:1px solid var(--line);background
 .badge{position:fixed;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);font:700 11px/1 system-ui,sans-serif;padding:6px 10px;border-radius:99px;z-index:15;pointer-events:none;opacity:.8}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
-@media (max-width:380px){.seg button{font-size:14px}.chip{padding:0 12px}#app{--gut:12px}}
+@media (max-width:380px){.chip{padding:0 12px}#app{--gut:12px}}
+/* rijen in lijsten zijn tikbaar; de tikzone loopt tot 44px */
+.lrow{position:relative}.lrow::after{content:"";position:absolute;inset:-1px 0}
+.lg .lrow{min-height:32px}.lg .lrow::after{inset:-6px 0}
+button.rr.lrow{flex-direction:column;align-items:stretch;gap:5px}
+button.rr.lrow::after{inset:-3px 0}
