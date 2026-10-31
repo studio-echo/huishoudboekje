@@ -1,0 +1,7 @@
+data/fixture.json
+data/*.csv
+*.xlsx
+.env
+.DS_Store
+node_modules/
+dev/out/
