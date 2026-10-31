@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Huishoudboekje</title>
-<meta name="theme-color" content="#0E1116">
+<meta name="theme-color" content="#F2F4F8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0A0C10" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,12 +19,15 @@
 <div id="app">
   <header class="top">
     <div class="seg" id="persons" role="tablist" aria-label="Weergave"></div>
-    <button class="icon" id="menu" aria-label="Instellingen">&#8943;</button>
+    <button class="chip" id="edit" aria-label="Indeling bewerken">Bewerk</button>
+    <button class="ib" id="menu" aria-label="Instellingen">&#8943;</button>
   </header>
-  <div class="bar" id="controls"></div>
-  <main id="view" aria-live="polite"></main>
+  <div class="bar" id="controls" aria-label="Periode"></div>
+  <div id="status"></div>
+  <main id="view"></main>
   <footer id="foot"></footer>
 </div>
+<div id="sr" class="sr" aria-live="polite"></div>
 <div id="lock" class="lock" hidden>
   <form id="lockform" class="card">
     <h1>Huishoudboekje</h1>
@@ -35,6 +39,8 @@
 </div>
 <script src="config.js"></script>
 <script src="calc.js"></script>
+<script src="layout.js"></script>
+<script src="widgets.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

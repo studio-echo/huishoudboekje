@@ -19,7 +19,7 @@
     { id: 'opgebouwd', naam: 'Opgebouwd resultaat', h: H2, views: ALL },
     { id: 'categorieen', naam: 'Categorieën', h: H3, views: ALL },
     { id: 'donut', naam: 'Donut per categorie', h: H2, views: ALL },
-    { id: 'inkomenflow', naam: 'Waar ging je inkomen heen', h: H2, views: ALL },
+    { id: 'inkomenflow', naam: 'Waar ging je inkomen heen', h: H3, views: ALL },
     { id: 'vastelasten', naam: 'Vaste lasten en leningen', h: H3, views: ALL },
     { id: 'abonnementen', naam: 'Abonnementen', h: H3, views: ALL },
     { id: 'opvallend', naam: 'Opvallend', h: H3, views: ALL },
