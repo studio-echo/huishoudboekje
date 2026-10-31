@@ -76,7 +76,7 @@ def new_page(b, w, h, scheme, errors, fixture=None):
     return ctx, page
 
 def go(page, view):
-    page.evaluate("v => { localStorage.setItem('hb_person', v) }", view)
+    page.evaluate("v => { localStorage.setItem('hb_person', v); localStorage.removeItem('hb_page_' + v) }", view)
     page.reload(); page.wait_for_selector('#grid .w')
 
 with sync_playwright() as pw:
@@ -89,13 +89,19 @@ with sync_playwright() as pw:
             page.goto(BASE + 'index.html?src=fixture'); page.wait_for_selector('#grid .w')
             for v in VIEWS:
                 go(page, v)
-                lab = '%dx%d %s %s' % (w, h, scheme, v)
-                check(page, lab)
-                page.screenshot(path='%s/%s_%dx%d_%s.png' % (OUT, v, w, h, scheme), full_page=True)
-                page.click('#edit'); page.wait_for_selector('.ed')
-                check(page, lab + ' bewerk')
-                if scheme == 'dark': page.screenshot(path='%s/%s_%dx%d_%s_bewerk.png' % (OUT, v, w, h, scheme), full_page=False)
-                page.click('#edit')
+                for i in range(page.locator('#dots button').count()):
+                    page.locator('#dots button').nth(i).click(); page.wait_for_timeout(320)
+                    pg = page.locator('#ptitle').inner_text()
+                    lab = '%dx%d %s %s %s' % (w, h, scheme, v, pg)
+                    check(page, lab)
+                    # iPad liggend: elke pagina past op het scherm, zonder scrollen
+                    if w == 1180 and page.evaluate('document.scrollingElement.scrollHeight') > h + 1: fails.append(lab + ': pagina past niet op het scherm')
+                    page.screenshot(path='%s/%s_%d_%dx%d_%s.png' % (OUT, v, i, w, h, scheme), full_page=True)
+                    if i == 0:
+                        page.click('#edit'); page.wait_for_selector('.ed')
+                        check(page, lab + ' bewerk')
+                        page.click('#edit')
+                page.locator('#dots button').first.click()
             for e in errors: fails.append('%dx%d %s console: %s' % (w, h, scheme, e))
             ctx.close()
 
@@ -112,24 +118,31 @@ with sync_playwright() as pw:
     if not page.locator('.mlabel').inner_text().startswith('Q'): fails.append('label kwartaal: ' + page.locator('.mlabel').inner_text())
     page.click('[data-st="-1"]')
     if not page.locator('.mlabel').inner_text().startswith('Q2'): fails.append('kwartaal terug: ' + page.locator('.mlabel').inner_text())
-    # doorklikken: categorie, ritme, 50/30/20 openen een vel met betalingen
-    for sel in ['[data-id=categorieen] [data-dd]', '[data-id=ritme] [data-dd]', '[data-id=regel] [data-dd]', '[data-id=vastvrij] [data-dd]']:
+    page.click('[data-per=maand]')
+    # vegen en pagina's: pijltjestoets, veeg met de muis, bolletjes
+    page.keyboard.press('ArrowRight')
+    if page.locator('#ptitle').inner_text() != 'Vaste kosten': fails.append('pijltje rechts gaat niet naar volgende pagina')
+    g = page.locator('#grid').bounding_box()
+    page.mouse.move(g['x'] + g['width'] * .8, g['y'] + 200); page.mouse.down(); page.mouse.move(g['x'] + g['width'] * .3, g['y'] + 210, steps=6); page.mouse.up(); page.wait_for_timeout(350)
+    if page.locator('#ptitle').inner_text() != 'Uitgaven': fails.append('vegen gaat niet naar volgende pagina: ' + page.locator('#ptitle').inner_text())
+    # doorklikken opent een vel met betalingen
+    for pg, sel in [(2, '[data-id=categorieen] [data-dd]'), (2, '[data-id=regel] [data-dd]'), (1, '[data-id=vastvrij] [data-dd]'), (1, '[data-id=vastelasten] [data-dd]')]:
+        page.locator('#dots button').nth(pg).click(); page.wait_for_timeout(320)
         if not page.locator(sel).count(): fails.append('geen doorklik in ' + sel); continue
         page.locator(sel).first.click(); page.wait_for_selector('#sheet')
         if page.locator('#sheet .list li').count() < 1: fails.append('doorklik toont geen betalingen ' + sel)
         page.keyboard.press('Escape')
-    page.locator('.bars .col[data-month="2026-05"]').first.click()
+    page.click('[data-pg=uitgaven]'); page.wait_for_timeout(320)
+    page.click('[data-wt="opvallend:winkels"]')
+    page.click('[data-more=opvallend]')
+    if page.locator('#sheet .list li').count() < 6: fails.append('Toon alle toont te weinig')
+    page.keyboard.press('Escape')
+    page.click('[data-pg=overzicht]'); page.wait_for_timeout(320)
+    page.locator('.lc[data-month="2026-05"]').first.click()
     lab = page.locator('.mlabel').inner_text()
     if 'mei' not in lab: fails.append('tik op staaf kiest maand niet: ' + lab)
     page.click('[data-st="1"]')
     if 'jun' not in page.locator('.mlabel').inner_text(): fails.append('stapper werkt niet')
-    page.click('[data-wt="inkomenflow:structureel"]')
-    if 'Structureel' not in page.locator('[data-id=inkomenflow]').inner_text() or 'eenmalig' not in page.locator('[data-id=inkomenflow] .wt').inner_text().lower():
-        fails.append('toggle structureel werkt niet')
-    page.click('[data-wt="opvallend:winkels"]')
-    page.click('[data-more=categorieen]')
-    if page.locator('#sheet .list li').count() < 6: fails.append('Toon alle toont te weinig')
-    page.keyboard.press('Escape')
     if page.locator('#sheet').count(): fails.append('Escape sluit vel niet')
     # bewerkmodus: grootte, pijl, verwijderen, toevoegen, standaard
     page.click('#edit')
@@ -140,16 +153,17 @@ with sync_playwright() as pw:
     page.click('[data-mv="uitgaven:-1"]')
     o1 = [x.split(':')[0] for x in order()]
     if o1.index('uitgaven') > o1.index('inkomen'): fails.append('pijl omhoog werkt niet')
-    page.click('[data-rm="buffer"]')
-    if any(x.startswith('buffer') for x in order()): fails.append('verwijderen werkt niet')
+    page.click('[data-rm="prognose"]')
+    if any(x.startswith('prognose') for x in order()): fails.append('verwijderen werkt niet')
     page.click('[data-act=gallery]'); page.wait_for_selector('#sheet .gi')
-    if not page.locator('[data-add=buffer]').count(): fails.append('verwijderde widget niet in galerij')
+    if not page.locator('[data-add=prognose]').count(): fails.append('verwijderde widget niet in galerij')
     if page.locator('[data-add=eerlijkheid]').count(): fails.append('eerlijkheid in galerij van MATS')
-    page.click('[data-add=weekdag]')
-    if not any(x.startswith('weekdag') for x in order()): fails.append('toevoegen werkt niet')
+    if page.locator('[data-add=buffer]').count(): fails.append('widget van een andere pagina staat in de galerij')
+    page.click('[data-add=maandverloop]')
+    if not any(x.startswith('maandverloop') for x in order()): fails.append('toevoegen werkt niet')
     # slepen met de muis via de greep
     page.evaluate('scrollTo(0, 0)'); page.wait_for_timeout(100)
-    a = page.locator('[data-hd=gespaard]').bounding_box(); t = page.locator('[data-id=resultaat]').bounding_box()
+    a = page.locator('[data-hd=gespaard]').bounding_box(); t = page.locator('[data-id=verloop]').bounding_box()
     page.mouse.move(a['x'] + 22, a['y'] + 22); page.mouse.down()
     for i in range(1, 15): page.mouse.move(a['x'] + 22 + (t['x'] + 60 - a['x'] - 22) * i / 14, a['y'] + 22 + (t['y'] + 60 - a['y'] - 22) * i / 14)
     page.mouse.up(); page.wait_for_timeout(400)
@@ -158,7 +172,7 @@ with sync_playwright() as pw:
     # aanraken: lang drukken en slepen (CDP touch)
     page.evaluate('scrollTo(0, 0)'); page.wait_for_timeout(100)
     cdp = ctx.new_cdp_session(page)
-    box = page.locator('[data-id=spaarratio] .en').bounding_box(); tgt = page.locator('[data-id=resultaat]').bounding_box()
+    box = page.locator('[data-id=spaarratio] .en').bounding_box(); tgt = page.locator('[data-id=verloop]').bounding_box()
     x0, y0 = box['x'] + 30, box['y'] + 10
     cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': x0, 'y': y0}]})
     page.wait_for_timeout(450)
@@ -168,34 +182,38 @@ with sync_playwright() as pw:
     cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []}); page.wait_for_timeout(400)
     ids = [x.split(':')[0] for x in order()]
     if ids.index('spaarratio') > 1: fails.append('lang drukken en slepen (touch) werkt niet: ' + ','.join(ids[:4]))
-    saved = page.evaluate("() => localStorage.getItem('hb_layout_MATS')")
-    if not saved or 'weekdag' not in saved: fails.append('indeling niet bewaard')
+    saved = page.evaluate("() => localStorage.getItem('hb_l3_MATS:overzicht')")
+    if not saved or 'maandverloop' not in saved: fails.append('indeling niet bewaard')
     page.reload(); page.wait_for_selector('#grid .w')
-    if not any(x.startswith('weekdag') for x in order()): fails.append('indeling niet hersteld na herladen')
+    if not any(x.startswith('maandverloop') for x in order()): fails.append('indeling niet hersteld na herladen')
     page.click('#edit'); page.click('[data-act=reset]'); page.click('#edit')
-    if any(x.startswith('weekdag') for x in order()): fails.append('standaard herstellen werkt niet')
+    if any(x.startswith('maandverloop') for x in order()): fails.append('standaard herstellen werkt niet')
     # lang drukken buiten bewerkmodus opent bewerkmodus
     box = page.locator('[data-id=inkomen] .wt').bounding_box()
     cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': box['x'] + 20, 'y': box['y'] + 8}]})
     page.wait_for_timeout(700); cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []}); page.wait_for_timeout(200)
     if not page.locator('body.editing').count(): fails.append('lang drukken opent bewerkmodus niet')
     # kapotte opslag breekt niets
-    page.evaluate("() => { localStorage.setItem('hb_layout_SOFIE', '{kapot'); localStorage.setItem('hb_person', 'SOFIE') }")
+    page.evaluate("() => { localStorage.setItem('hb_l3_SOFIE:overzicht', '{kapot'); localStorage.setItem('hb_person', 'SOFIE'); localStorage.setItem('hb_page_SOFIE', 'overzicht') }")
     page.reload(); page.wait_for_selector('#grid .w')
-    if page.locator('#grid .w').count() < 10: fails.append('kapotte opslag geeft geen standaardindeling')
+    if page.locator('#grid .w').count() < 7: fails.append('kapotte opslag geeft geen standaardindeling')
+    # gegevens en rekeningen zitten in het menu
+    page.click('#menu'); page.click('[data-act=data]')
+    if page.locator('#sheet .list li').count() < 3: fails.append('gegevens en rekeningen leeg')
+    page.keyboard.press('Escape')
     for e in errors: fails.append('interactie console: ' + e)
     ctx.close()
 
     # 2b. gedeelde indeling uit het blad wint van wat op het toestel staat
     fx = json.load(open(os.path.join(ROOT, 'data', 'fixture.json')))
-    fx3 = dict(fx); fx3['indeling'] = {'MATS': [{'id': 'weekdag', 'size': 'L'}, {'id': 'auto', 'size': 'L'}, {'id': 'beleggingen', 'size': 'L'}]}
+    fx3 = dict(fx); fx3['indeling'] = {'v': 3, 'MATS:overzicht': [{'id': 'maandverloop', 'size': 'L'}, {'id': 'auto', 'size': 'L'}]}
     errors = []
     ctx, page = new_page(b, 820, 1180, 'light', errors, fx3)
     page.goto(BASE + 'index.html?src=fixture'); page.wait_for_selector('#grid .w')
-    page.evaluate("() => { localStorage.setItem('hb_layout_MATS', JSON.stringify({v:2,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS') }")
+    page.evaluate("() => { localStorage.setItem('hb_l3_MATS:overzicht', JSON.stringify({v:3,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS'); localStorage.removeItem('hb_page_MATS') }")
     page.reload(); page.wait_for_selector('#grid .w')
     ids = page.evaluate("() => [...document.querySelectorAll('#grid .w')].map(t => t.dataset.id)")
-    if ids != ['weekdag', 'auto', 'beleggingen']: fails.append('gedeelde indeling niet gebruikt: ' + ','.join(ids))
+    if ids != ['maandverloop', 'auto']: fails.append('gedeelde indeling niet gebruikt: ' + ','.join(ids))
     check(page, 'gedeelde indeling')
     for e in errors: fails.append('gedeelde indeling console: ' + e)
     ctx.close()
@@ -207,7 +225,7 @@ with sync_playwright() as pw:
     errors = []
     ctx, page = new_page(b, 390, 844, 'light', errors, fx2)
     page.goto(BASE + 'index.html?src=fixture'); page.wait_for_selector('#grid .w'); go(page, 'SOFIE')
-    for wid in ['resultaat', 'inkomen', 'spaarratio']:
+    for wid in ['verloop', 'inkomen', 'spaarratio']:
         if 'Nog geen eigen rekening' not in page.locator('[data-id=%s]' % wid).inner_text(): fails.append('lege toestand ontbreekt in ' + wid)
     if page.locator('[data-id=uitgaven] .kv').count() == 0: fails.append('uitgaven Sofie ontbreekt zonder rekeningen')
     if 'aandachtspunt' not in page.locator('#status').inner_text(): fails.append('aandachtspunt Sofie ontbreekt')

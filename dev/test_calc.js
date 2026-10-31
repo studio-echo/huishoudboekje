@@ -128,21 +128,25 @@ const unk = C.dataQuality(C.makeCtx(Object.assign({}, data, { transacties: tx.co
 ok('onbekende categorie gemeld', unk.unknownCategories['Nieuwe categorie'] === 1);
 
 /* ---------- 3. indeling ---------- */
-['MATS', 'SOFIE', 'SAMEN'].forEach(v => ok('standaard ' + v + ' geldig', L.clean(L.defaults(v), v).length === L.defaults(v).length));
-ok('MATS en SOFIE zelfde standaard, met auto', JSON.stringify(L.defaults('MATS')) === JSON.stringify(L.defaults('SOFIE')) && L.defaults('SOFIE').some(x => x.id === 'auto'));
-ok('gedeelde indeling opgeschoond', JSON.stringify(L.fromShared({ MATS: [{ id: 'auto', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], X: [] })) === '{"MATS":[{"id":"auto","size":"L"}]}');
+const V3 = (v, p) => L.defaults(v, p);
+['MATS', 'SOFIE', 'SAMEN'].forEach(v => L.pages(v).forEach(p => {
+  const d = V3(v, p.id), cells = d.reduce((a, x) => a + ({ S: 1, M: 2, L: 4 })[x.size] * L.height(x.id, x.size), 0);
+  ok('standaard ' + v + ' ' + p.id + ' vult 4x4', cells === 16 && L.clean(d, v).length === d.length, cells);
+}));
+ok('MATS en SOFIE zelfde pagina\'s', JSON.stringify(L.pages('MATS').map(p => V3('MATS', p.id))) === JSON.stringify(L.pages('SOFIE').map(p => V3('SOFIE', p.id))));
+ok('pagina Samen enkel bij SAMEN', L.pages('MATS').length === 4 && L.pages('SAMEN').length === 5);
+ok('gedeelde indeling opgeschoond, geen dubbels over pagina\'s', JSON.stringify(L.fromShared({ v: 3, 'MATS:overzicht': [{ id: 'auto', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], 'MATS:vast': [{ id: 'auto', size: 'S' }, { id: 'buffer', size: 'S' }] })) === '{"MATS:overzicht":[{"id":"auto","size":"L"}],"MATS:vast":[{"id":"buffer","size":"S"}]}');
+ok('oude gedeelde indeling genegeerd', JSON.stringify(L.fromShared({ MATS: [{ id: 'auto', size: 'L' }] })) === '{}');
 ok('eerlijkheid enkel bij SAMEN', !L.allowed('eerlijkheid', 'MATS') && L.allowed('eerlijkheid', 'SAMEN'));
 ok('ongeveer 20 widgets', L.CATALOG.length >= 19, L.CATALOG.length);
-const saved = L.parseSaved(JSON.stringify({ v: 1, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
-ok('bewaarde indeling opgeschoond', saved.length === 2 && saved[1].size === 'M', JSON.stringify(saved));
-ok('kapotte opslag geeft null', L.parseSaved('{kapot', 'MATS') === null && L.parseSaved(null, 'MATS') === null);
-ok('galerij toont wat niet op de pagina staat', L.gallery(saved, 'MATS').every(w => w.id !== 'inkomen') && L.gallery(saved, 'MATS').some(w => w.id === 'weekdag') && !L.gallery(saved, 'MATS').some(w => w.id === 'eerlijkheid'));
+const saved = L.parseSaved(JSON.stringify({ v: 3, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
+ok('opgeslagen indeling opgeschoond', JSON.stringify(saved) === '[{"id":"inkomen","size":"L"},{"id":"buffer","size":"M"}]', JSON.stringify(saved));
+ok('kapotte of oude opslag geeft null', L.parseSaved('{kapot', 'MATS') === null && L.parseSaved(null, 'MATS') === null && L.parseSaved('{"v":2,"items":[]}', 'MATS') === null);
+ok('galerij toont wat op geen pagina staat', L.gallery(saved, 'MATS').every(w => w.id !== 'inkomen' && w.id !== 'buffer') && L.gallery(saved, 'MATS').some(w => w.id === 'auto') && !L.gallery(saved, 'MATS').some(w => w.id === 'eerlijkheid'));
 ok('verplaatsen', L.move([{ id: 'a' }, { id: 'b' }, { id: 'c' }], 0, 2).map(x => x.id).join('') === 'bca');
 ok('volgende grootte', L.nextSize('S') === 'M' && L.nextSize('L') === 'S');
-const code = L.encode({ MATS: saved, SAMEN: L.defaults('SAMEN') }), back = L.decode(code);
-ok('layoutcode heen en terug', JSON.stringify(back.MATS) === JSON.stringify(saved) && back.SAMEN.length === L.defaults('SAMEN').length && !back.SOFIE);
-let err = ''; try { L.decode('onzin'); } catch (e) { err = e.message; } ok('foute layoutcode geeft Nederlandse uitleg', /geen geldige layoutcode/.test(err));
-err = ''; try { L.decode('HB2.!!!'); } catch (e) { err = e.message; } ok('beschadigde layoutcode', /beschadigd|geen herkende/.test(err), err);
+const sh = L.toShared(k => L.defaults(...k.split(':')));
+ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) === JSON.stringify(L.defaults('SAMEN', 'samen')) && sh.v === 3);
 
 /* ---------- nieuwe berekeningen, verzonnen voorbeeld ---------- */
 {

@@ -201,8 +201,11 @@
       var cat = Object.keys(cats).sort(function (a, b) { return cats[b] - cats[a]; })[0];
       var avg = med;
       var naam = LOANS[k] || xs[xs.length - 1].r.Tegenpartij || xs[xs.length - 1].r.Omschrijving;
+      /* prijsstijging: laatste maandbedrag tegenover de mediaan van de maanden ervoor */
+      var vorig = mk.length >= 3 ? median(mk.slice(0, -1).slice(-4).map(function (m) { return tot[m]; })) : null, nu = tot[laatste];
+      var stijging = vorig && nu - vorig >= 1 && nu > vorig * 1.05 && nu < vorig * 2 ? nu - vorig : 0;
       out.push({
-        key: k, naam: cleanName(naam), cat: cat, perMaand: avg, perJaar: avg * 12,
+        key: k, naam: cleanName(naam), cat: cat, perMaand: avg, perJaar: avg * 12, laatsteBedrag: nu, stijging: stijging,
         maanden: mk.length, laatste: laatste, lening: isLoan(k), abonnement: cat === 'Abonnementen',
         actief: !lastMonth || laatste >= prev(lastMonth)
       });

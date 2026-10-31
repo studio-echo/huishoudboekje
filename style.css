@@ -4,16 +4,16 @@
    Type: 12 / 13 / 14 / 16 / 22 / 28 / hero.  Ruimte: 4 / 8 / 12 / 16 / 24.  Rij-eenheid: --row. */
 :root{
   --bg:#F2F4F8;--card:#FFFFFF;--card2:#F0F2F6;--track:#E2E6ED;--ink:#0E1116;--muted:#556070;--line:#E1E5EC;
-  --pos:#0A7A50;--neg:#C2273F;--mats:#2563EB;--sofie:#CF3A1C;--samen:#0B7A6F;--on:#FFFFFF;
+  --pos:#0A7A50;--neg:#C2273F;--mats:#2563EB;--sofie:#7C3AED;--samen:#0B7A6F;--on:#FFFFFF;
   --accent:var(--mats);--r:22px;--gut:16px;--gap:12px;--row:136px;--shadow:0 1px 2px rgba(16,24,40,.06);
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){
   --bg:#0A0C10;--card:#15181E;--card2:#1C2028;--track:#2A303B;--ink:#F3F5F9;--muted:#A0A9B8;--line:#252A34;
-  --pos:#3DD68C;--neg:#FF7286;--mats:#5B9BFF;--sofie:#FF6E4A;--samen:#2DD4BF;--on:#08111F;--shadow:none;color-scheme:dark}}
+  --pos:#3DD68C;--neg:#FF7286;--mats:#5B9BFF;--sofie:#A78BFA;--samen:#2DD4BF;--on:#08111F;--shadow:none;color-scheme:dark}}
 :root[data-theme=dark]{
   --bg:#0A0C10;--card:#15181E;--card2:#1C2028;--track:#2A303B;--ink:#F3F5F9;--muted:#A0A9B8;--line:#252A34;
-  --pos:#3DD68C;--neg:#FF7286;--mats:#5B9BFF;--sofie:#FF6E4A;--samen:#2DD4BF;--on:#08111F;--shadow:none;color-scheme:dark}
+  --pos:#3DD68C;--neg:#FF7286;--mats:#5B9BFF;--sofie:#A78BFA;--samen:#2DD4BF;--on:#08111F;--shadow:none;color-scheme:dark}
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
 body{background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums;
@@ -34,7 +34,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .seg button::after{content:"";position:absolute;inset:-6px 0}
 .seg button[aria-selected=true]{background:var(--card);font-weight:650;box-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04)}
 .seg button[aria-selected=true]::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--c);margin-right:6px;vertical-align:1px}
-.seg.per{flex:0 1 330px}.seg.per button[aria-selected=true]::before{display:none}
+.seg.per{flex:none}.seg.per button{flex:none;padding:0 14px}.seg.per button[aria-selected=true]::before{display:none}
 #edit,.top .ib{min-height:36px;min-width:36px;font-size:14px}
 /* kleinere knoppen houden een tikzone van 44px via ::after */
 .step,.lk,#edit,.top .ib{position:relative}
@@ -99,7 +99,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .fill{flex:1;min-height:0;display:flex}
 .area{position:relative;flex:1;min-height:40px;display:flex;flex-direction:column}
 .area svg{flex:1;width:100%;min-height:0;display:block;overflow:visible}
-.area .dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--card);transform:translate(-50%,-50%);margin-top:-2px}
+.area .dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--card);transform:translate(-50%,-50%)}
 .axis{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);flex:none;padding-top:2px}
 .bars{flex:1;min-height:0;display:flex;gap:4px}
 .bars .col{flex:1;min-width:0;display:flex;flex-direction:column;background:none;border:0;border-radius:10px;padding:0 0 2px}
@@ -256,3 +256,73 @@ input{min-height:52px;border-radius:14px;border:1px solid var(--line);background
 .lg .lrow{min-height:32px}.lg .lrow::after{inset:-6px 0}
 button.rr.lrow{flex-direction:column;align-items:stretch;gap:5px}
 button.rr.lrow::after{inset:-3px 0}
+
+/* ================= pagina's (v3) ================= */
+.top{flex-wrap:wrap;row-gap:6px}
+.top .bar{padding:0;flex-wrap:nowrap}
+.tsp{flex:1}
+@media (max-width:899px){.top .bar{order:5;width:100%}}
+.phead{display:flex;align-items:baseline;gap:6px 16px;flex-wrap:wrap;padding:6px 2px 10px}
+#ptitle{font-size:28px;line-height:1.1;font-weight:750;letter-spacing:-.02em}
+.phead #status{padding:0;flex:1;min-width:240px}
+.phead .sline{justify-content:flex-end;text-align:right}
+@media (max-width:719px){.phead .sline{justify-content:flex-start;text-align:left}#ptitle{font-size:24px}}
+#dots{display:flex;justify-content:center;gap:0;padding:6px 0 2px}
+#dots button{width:32px;height:28px;border:0;background:none;display:grid;place-items:center;position:relative}
+#dots button::after{content:"";position:absolute;inset:-8px -6px}
+#dots i{width:8px;height:8px;border-radius:50%;background:color-mix(in srgb,var(--ink) 25%,transparent);transition:width .2s}
+#dots [aria-current] i{background:var(--ink);width:20px;border-radius:4px}
+body.fit #foot{display:none}
+body.fit #app{padding-bottom:0}
+body.fit #status .notes{position:absolute;right:var(--gut);z-index:25;max-width:520px;box-shadow:0 12px 30px -10px rgba(0,0,0,.35);border-radius:16px}
+.phead{position:relative}
+.grid.in-r{animation:inr .28s cubic-bezier(.2,.8,.2,1)}.grid.in-l{animation:inl .28s cubic-bezier(.2,.8,.2,1)}
+@keyframes inr{from{transform:translateX(40px);opacity:0}}@keyframes inl{from{transform:translateX(-40px);opacity:0}}
+
+/* twee lijnen */
+.lines{flex:1;min-height:0;display:flex;flex-direction:column}
+.lplot{position:relative;flex:1;min-height:60px}
+.lplot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.pt{position:absolute;width:10px;height:10px;border-radius:50%;transform:translate(-50%,-50%);border:2px solid var(--card)}
+.pt.a{background:var(--accent)}.pt.b{background:var(--muted)}
+.lcols{display:flex;flex:none}
+.lc{flex:1;min-width:0;height:28px;border:0;background:none;font-size:12px;color:var(--muted);border-radius:8px;position:relative}
+.lc::after{content:"";position:absolute;left:-3px;right:-3px;bottom:0;top:-200px}
+.lc.sel{color:var(--ink);font-weight:700}
+.lc:hover{background:var(--card2)}
+.w.hero .wb{gap:20px}
+.hb{min-width:170px}
+.hl{list-style:none;display:grid;gap:4px;margin-top:12px;font-size:13px}
+.hl li{display:flex;align-items:center;gap:0;color:var(--muted)}
+.hl b{margin-left:auto;padding-left:14px;color:var(--ink);font-weight:650}
+.hl .mu{border-top:1px solid var(--line);padding-top:5px;margin-top:2px}
+.sw.dash{background:none;border-top:2px dashed var(--muted);height:0;border-radius:0;vertical-align:3px}
+.mini{position:relative;flex:1;min-height:18px;margin:2px -2px 0}
+.mini svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.mini i{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--accent);transform:translate(-50%,-50%)}
+.kpi.kx{flex:none;justify-content:flex-start}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:4px 12px;flex:1;align-content:center}
+.stats b{display:block;font-size:24px;line-height:1.1;font-weight:750;letter-spacing:-.02em;white-space:nowrap}
+.stats span{font-size:12px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;flex:none}
+.chips>*{background:var(--card2);border-radius:99px;padding:3px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
+.chips b{color:var(--ink);font-weight:700}.chips .neg b{color:var(--neg)}
+.chips .lk{min-height:28px;font-weight:500;color:var(--muted)}
+.chips .lk::after{inset:-8px 0}
+.list.fl{flex:1 1 0;min-height:0}
+.list.fl+.more{margin-top:0}
+.list li[hidden]{display:none}
+.lb{position:relative;overflow:visible}
+.lb b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);border-radius:1px;transform:translateX(-50%)}
+.lb i{border-radius:99px}
+.list.wide .lb{width:34%;max-width:200px}
+.tk{display:inline-block;width:2px;height:10px;background:var(--ink);margin-right:6px;vertical-align:-1px}
+.goal .kv{margin-bottom:auto}
+.w .wi{padding:14px 16px 12px}
+@media (max-width:899px){.top .bar{flex-wrap:wrap;gap:8px}.top .seg.per{flex:1 1 260px}.top .seg.per button{flex:1;padding:0 6px}.top .pgrp{margin-left:auto}}
+@media (max-width:719px){.top .seg#persons{flex:1 1 100%;margin-right:0;order:0}}
+@media (max-width:899px){.top{position:static;background:none;-webkit-backdrop-filter:none;backdrop-filter:none}}
+.flow{display:flex;flex-direction:column;justify-content:space-around;flex:1;min-height:0;gap:6px}
+.flow .rb{height:10px}
+.frb{height:14px}.frb.thin{height:6px}
+.ap{position:relative;flex:1;min-height:0;display:flex}

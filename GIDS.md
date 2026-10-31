@@ -33,14 +33,17 @@ Meer is er niet.
 - **Kolom Gebruik (optioneel)** in het tabblad **Rekeningen**: `maandelijks` of `af en toe`. Een rekening op `af en toe` geeft nooit de melding "geen boekingen". Zonder die kolom tellen kredietkaart, Revolut en maaltijdcheques automatisch als `af en toe`.
 - Rekeningen met Eigenaar = `Sofie` vullen de weergave SOFIE. Zonder eigen rekeningen tonen de tegels die inkomen nodig hebben een lege toestand in de tegel zelf.
 
-## D. Indeling (widgets)
-- Tik op **Bewerk** of druk lang op een tegel. Sleep aan de greep (⠿), of gebruik de pijlen. Met S, M en L kies je de grootte, met − verwijder je een tegel, met **+ Widget** voeg je er een toe. **Standaard herstellen** zet de indeling van die weergave terug. **Klaar** sluit af.
+## D. Pagina's en indeling (widgets)
+- Vier pagina's (Samen heeft er vijf): **Overzicht**, **Vaste kosten**, **Uitgaven**, **Sparen** en **Samen**. Veeg naar links of rechts, tik op de bolletjes onderaan, of gebruik de pijltjestoetsen. Op een iPad liggend past elke pagina precies op het scherm.
+- Bovenaan kies je Maand, Kwartaal, Jaar of Alles, met pijlen om terug en vooruit te gaan. Tik op een maand in de grafiek om die maand te kiezen.
+- Gegevens en rekeningen (laatste boeking per rekening, voetnoten) staan in het menu (⋯).
+- Tik op **Bewerk** of druk lang op een tegel. Sleep aan de greep (⠿), of gebruik de pijlen. Met S, M en L kies je de grootte, met − verwijder je een tegel, met **+ Widget** voeg je er een toe. **Standaard herstellen** zet de huidige pagina terug. **Klaar** sluit af.
 - De indeling staat in het blad, in het tabblad **Indeling** (dat maakt de site zelf aan). Pas je ze aan op de iPad, dan zie je hetzelfde op je gsm. Niet met de hand aanpassen.
 - Daarvoor moet het nieuwe Code.gs in Apps Script staan: plak het volledige bestand over het oude en kies **Implementeren > Implementaties beheren > bewerken > Nieuwe versie**. De link blijft dezelfde.
 - Tik op een rij (categorie, potje, autokost, vaste last) of op Vast en Vrij om de betalingen erachter te zien.
 
 ## D2. Optionele tabbladen
-- **Potjes**: kolommen Naam, Categorieen (met komma's), Bedrag (per maand) of Procent (van het inkomen), Wie (Mats, Sofie, Samen of leeg = iedereen). Zonder tabblad toont de tegel een voorstel.
+- **Potjes**: kolommen Naam, Categorieen (met komma's), Bedrag (per maand) of Procent (van het inkomen), Wie (Mats, Sofie, Samen of leeg = iedereen). Ze verschijnen in de tegel Categorieën en potjes, met het budget als streepje. Zonder tabblad is het streepje wat je gewoonlijk uitgeeft.
 - **Beleggingen**: Datum, ETF, Soort, Bedrag, Aantal, Wie. Soort = aankoop (wat je betaalde) of waarde (wat de ETF die dag waard is, bv. overgetypt van MeDirect, één keer per maand).
 - **Categorieen**, optionele kolom **Soort**: nodig of wens, voor de 50/30/20-tegel. Leeg = standaard (wonen, boodschappen, vervoer, gezondheid en administratie zijn nodig).
 - De autotegel herkent kosten op naam (tankstation, garage, parking). Verzekering of taks die via een andere rekening loopt, ziet hij niet.
