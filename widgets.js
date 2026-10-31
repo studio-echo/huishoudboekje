@@ -154,7 +154,7 @@ R.resultaat = function (M, size) {
   var e = needOwn(M); if (e) return { title: 'Resultaat', body: empty(e) };
   var m = M.m, res = m.resultaat, cash = m.inkomen + m.uitgaven;
   var title = res >= 0 ? J(M, 'Je', 'Jullie') + ' hield' + (M.view === 'SAMEN' ? 'en' : '') + ' ' + eur(res) + ' over ' + M.when
-    : cash < 0 ? J(M, 'Je', 'Jullie') + ' gaf' + (M.view === 'SAMEN' ? 'en' : '') + ' ' + eurAbs(cash) + ' meer uit dan er binnenkwam'
+    : cash < 0 ? J(M, 'Je gaf', 'Jullie gaven') + ' ' + eurAbs(cash) + ' meer uit dan er binnenkwam'
     : 'Na sparen kwam' + J(M, ' je', 'en jullie') + ' ' + eurAbs(res) + ' tekort';
   var sub = '<div class="hs">Zonder eenmalige posten: <b class="' + (m.structureel >= 0 ? 'pos' : 'neg') + '">' + (m.structureel >= 0 ? '▲ ' : '▼ ') + signed(m.structureel) + '</b></div>';
   if (size === 'S') return { title: title, body: kpi('Resultaat', eur(res), 'zonder eenmalig ' + signed(m.structureel)) };
@@ -336,7 +336,7 @@ R.buffer = function (M, size) {
   var b = C.buffer(M.ctx, M.view, M.dq.lastComplete, 3);
   if (!b) return { title: 'Buffer', body: empty('Nog geen saldo in het tabblad Saldi.') };
   var mo = b.maanden;
-  var title = mo == null ? 'Buffer: ' + eur(b.saldo) : J(M, 'Je', 'Jullie') + ' buffer dekt ' + mo.toFixed(1).replace('.', ',') + ' maand' + (mo >= 1.95 || mo < 0.95 ? 'en' : '') + ' uitgaven';
+  var title = mo == null ? 'Buffer: ' + eur(b.saldo) : J(M, 'Je', 'Jullie') + ' buffer dekt ' + mo.toFixed(1).replace('.', ',') + ' maand' + (mo.toFixed(1) === '1.0' ? '' : 'en') + ' uitgaven';
   return { title: title, body: kpi('Op zichtrekeningen, ' + dNice(b.datum), eur(b.saldo), size === 'S' ? 'zonder spaargeld' : 'Uitgaven zonder eenmalig: ' + eur(b.perMaand) + ' per maand (laatste 3 maanden). Spaargeld telt niet mee.') };
 };
 
