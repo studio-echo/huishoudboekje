@@ -34,6 +34,14 @@ CHECK_JS = r"""() => {
       if (el.matches('.kv,.big') && el.scrollWidth > el.clientWidth + 1) out.push('getal te breed ' + t.id + ' "' + el.textContent + '"');
     }
   }
+  const g = document.getElementById('grid');
+  if (g && tiles.length && !document.body.classList.contains('editing')) {
+    const cols = getComputedStyle(g).gridTemplateColumns.split(' ').length, gr = g.getBoundingClientRect();
+    const row = parseFloat(getComputedStyle(g).gridAutoRows), gap = parseFloat(getComputedStyle(g).rowGap);
+    const rows = Math.round((gr.height + gap) / (row + gap));
+    let used = 0; for (const t of tiles) used += Math.round((t.r.width + gap) / ((gr.width + gap) / cols)) * Math.round((t.r.height + gap) / (row + gap));
+    if (used !== cols * rows) out.push('gat in het raster: ' + (cols * rows - used) + ' lege cellen');
+  }
   for (const b of document.querySelectorAll('button')) {
     const r = b.getBoundingClientRect(), cs = getComputedStyle(b);
     if (!r.width || cs.visibility === 'hidden' || b.closest('[hidden]')) continue;

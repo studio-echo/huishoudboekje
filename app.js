@@ -138,7 +138,7 @@ function status() {
   if (S.edit) { $('#status').innerHTML = ''; return; }
   var ns = S.notes.filter(function (n) { return n.level === 'note'; }), fs = S.notes.filter(function (n) { return n.level === 'foot'; });
   var h = (S.alert ? '<div class="alert slim" role="alert">' + esc(S.alert) + '</div>' : '') +
-    '<div class="sline"><span>Volledig = alle rekeningen ingeladen: ' + esc(F.mLong(S.V[0]) + ' tot ' + F.mLong(S.V[S.V.length - 1], true)) + '.</span>';
+    '<div class="sline"><span>Cijfers volledig van ' + esc(F.mShort(S.V[0]) + ' tot ' + F.mShort(S.V[S.V.length - 1]) + ' ' + S.V[S.V.length - 1].slice(0, 4)) + ' (alle rekeningen ingeladen)' + (S.dq.partialMonths.length ? ' · ' + esc(S.dq.partialMonths.map(F.mShort).join(', ')) + ' loopt nog' : '') + '.</span>';
   if (ns.length || fs.length) h += ' <button class="slink" data-act="notes" aria-expanded="' + S.notesOpen + '">' + (ns.length ? ns.length + ' aandachtspunt' + (ns.length > 1 ? 'en' : '') : fs.length + ' voetnoot' + (fs.length > 1 ? 'en' : '')) + ' <span aria-hidden="true">' + (S.notesOpen ? '▴' : '▾') + '</span></button>';
   h += '</div>';
   if (S.notesOpen) h += '<ul class="notes">' + ns.concat(fs).map(function (n) { return '<li' + (n.level === 'foot' ? ' class="ft"' : '') + '>' + esc(n.text) + '</li>'; }).join('') + '</ul>';

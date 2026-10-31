@@ -38,15 +38,15 @@
   var PERSON_DEFAULT = [
     ['resultaat', 'L'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gespaard', 'S'], ['spaarratio', 'S'],
     ['maandverloop', 'L'], ['categorieen', 'M'], ['inkomenflow', 'M'], ['spaardoel', 'S'], ['buffer', 'S'],
-    ['vastelasten', 'M'], ['opvallend', 'M'], ['dataoverzicht', 'L']
+    ['gemiddelde', 'M'], ['vastelasten', 'M'], ['opvallend', 'M'], ['dataoverzicht', 'L']
   ];
   var DEFAULTS = {
     MATS: PERSON_DEFAULT,
     SOFIE: PERSON_DEFAULT,
     SAMEN: [
       ['resultaat', 'L'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gespaard', 'S'], ['spaarratio', 'S'],
-      ['eerlijkheid', 'M'], ['gedeeld', 'M'], ['maandverloop', 'L'], ['donut', 'M'], ['inkomenflow', 'M'],
-      ['vastelasten', 'M'], ['opvallend', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['gemiddelde', 'M'], ['dataoverzicht', 'L']
+      ['eerlijkheid', 'M'], ['gedeeld', 'M'], ['maandverloop', 'L'], ['inkomenflow', 'M'], ['vastelasten', 'M'],
+      ['donut', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['gemiddelde', 'M'], ['opvallend', 'L'], ['dataoverzicht', 'L']
     ]
   };
 
