@@ -135,18 +135,18 @@ const V3 = (v, p) => L.defaults(v, p);
 }));
 ok('MATS en SOFIE zelfde pagina\'s, auto enkel bij Sofie', JSON.stringify(L.pages('MATS').map(p => p.id)) === JSON.stringify(L.pages('SOFIE').map(p => p.id)) && !L.defaults('MATS', 'vast').some(x => x.id === 'auto') && L.defaults('SOFIE', 'vast').some(x => x.id === 'auto'));
 ok('pagina Samen enkel bij SAMEN, FIRE overal', L.pages('MATS').length === 7 && L.pages('SAMEN').length === 8 && L.pages('SAMEN').some(p => p.id === 'fire'));
-ok('gedeelde indeling opgeschoond, geen dubbels over pagina\'s', JSON.stringify(L.fromShared({ v: 5, 'MATS:overzicht': [{ id: 'inkomenflow', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], 'MATS:vast': [{ id: 'inkomenflow', size: 'S' }, { id: 'buffer', size: 'S' }] })) === '{"MATS:overzicht":[{"id":"inkomenflow","size":"L"}],"MATS:vast":[{"id":"buffer","size":"S"}]}');
+ok('gedeelde indeling opgeschoond, geen dubbels over pagina\'s', JSON.stringify(L.fromShared({ v: 6, 'MATS:overzicht': [{ id: 'inkomenflow', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], 'MATS:vast': [{ id: 'inkomenflow', size: 'S' }, { id: 'buffer', size: 'S' }] })) === '{"MATS:overzicht":[{"id":"inkomenflow","size":"L"}],"MATS:vast":[{"id":"buffer","size":"S"}]}');
 ok('oude gedeelde indeling genegeerd', JSON.stringify(L.fromShared({ MATS: [{ id: 'auto', size: 'L' }] })) === '{}');
 ok('eerlijkheid enkel bij SAMEN', !L.allowed('eerlijkheid', 'MATS') && L.allowed('eerlijkheid', 'SAMEN'));
 ok('ongeveer 20 widgets', L.CATALOG.length >= 19, L.CATALOG.length);
-const saved = L.parseSaved(JSON.stringify({ v: 5, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
+const saved = L.parseSaved(JSON.stringify({ v: 6, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
 ok('opgeslagen indeling opgeschoond', JSON.stringify(saved) === '[{"id":"inkomen","size":"L"},{"id":"buffer","size":"M"}]', JSON.stringify(saved));
 ok('kapotte of oude opslag geeft null', L.parseSaved('{kapot', 'MATS') === null && L.parseSaved(null, 'MATS') === null && L.parseSaved('{"v":2,"items":[]}', 'MATS') === null);
 ok('galerij toont wat op geen pagina staat', L.gallery(saved, 'MATS').every(w => w.id !== 'inkomen' && w.id !== 'buffer') && L.gallery(saved, 'MATS').some(w => w.id === 'inkomenflow') && !L.gallery(saved, 'MATS').some(w => w.id === 'eerlijkheid'));
 ok('verplaatsen', L.move([{ id: 'a' }, { id: 'b' }, { id: 'c' }], 0, 2).map(x => x.id).join('') === 'bca');
 ok('volgende grootte', L.nextSize('S') === 'M' && L.nextSize('L') === 'S');
 const sh = L.toShared(k => L.defaults(...k.split(':')));
-ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) === JSON.stringify(L.defaults('SAMEN', 'samen')) && sh.v === 5);
+ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) === JSON.stringify(L.defaults('SAMEN', 'samen')) && sh.v === 6);
 
 /* ---------- nieuwe berekeningen, verzonnen voorbeeld ---------- */
 {
@@ -182,6 +182,34 @@ ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) ===
   const fr = C.fire(10000, 500, 0.05, 100000, 60);
   ok('FIRE: jaren tot doel', fr.jaren === 11 && fr.reeks[1].v === 10000 * 1.05 + 6000, fr.jaren);
   ok('ETF: niets voor Mats', C.investments(cx, 'MATS') === null);
+}
+
+/* v6: bijdragen, spreiden, reizen, CHECK, vermogen */
+{
+  const d = {
+    rekeningen: [{ Rekening_ID: 'G', Eigenaar: 'Gezamenlijk', Type: 'Zichtrekening' }, { Rekening_ID: 'K', Eigenaar: 'Gezamenlijk', Type: 'Kredietkaart' }, { Rekening_ID: 'M', Eigenaar: 'Mats', Type: 'Zichtrekening' }],
+    categorieen: [{ Categorie: 'Overdracht gezamenlijke rekening', Type: 'neutraal' }, { Categorie: 'Interne overdracht', Type: 'neutraal' }, { Categorie: 'Woonkost', Type: 'uitgave' }, { Categorie: 'Reizen', Type: 'uitgave' }, { Categorie: 'Loon', Type: 'inkomen' }],
+    transacties: [
+      T('2026-01-02', 'G', 'Overdracht gezamenlijke rekening', 1000, 1, 0), T('2026-01-03', 'G', 'Overdracht gezamenlijke rekening', 800, 0, 1),
+      T('2026-01-04', 'G', 'Overdracht gezamenlijke rekening', 50, 0, 0), T('2026-01-10', 'G', 'Woonkost', -1200, 0.5, 0.5),
+      T('2026-01-11', 'K', 'Woonkost', -200, 0.5, 0.5), T('2026-01-20', 'G', 'Interne overdracht', -200, 0.5, 0.5),
+      T('2026-01-05', 'M', 'Reizen', -1200, 1, 0, { Nota: 'Reis: Barcelona maart 2026' }), T('2026-01-06', 'M', 'Woonkost', -60, 1, 0, { Nota: 'CHECK: wat is dit?' }),
+      T('2026-01-07', 'M', 'Woonkost', -300, 1, 0, { Nota: 'Kwartaalvoorschot VME' })
+    ],
+    saldi: [{ Rekening_ID: 'M', Datum: '2026-01-31', Saldo: 1000 }, { Rekening_ID: 'M', Datum: '2026-02-28', Saldo: '1.250,50' }, { Rekening_ID: 'G', Datum: '2026-02-28', Saldo: 400 }]
+  };
+  const cx = C.makeCtx(d), j = C.jointContrib(cx, '2026-01', '2026-01');
+  ok('bijdrage: stortingen per persoon, 0/0 apart', j.dep.MATS === 1000 && j.dep.SOFIE === 800 && j.los === 1 && j.losBedrag === 50, JSON.stringify(j.dep));
+  ok('bijdrage: aandeel incl. kaart, zonder interne overdracht', j.share.MATS === 700 && j.share.SOFIE === 700 && j.kosten === 1400);
+  ok('bijdrage: dekking', Math.abs(j.dekking.MATS - 1000 / 700) < 1e-9);
+  ok('samen: interne overdracht telt niet, kaart wel', C.metrics(C.rowsFor(cx, 'SAMEN')).uitgaven === -1400);
+  const sp = C.rowsFor(cx, 'MATS', null, { spread: true }).filter(x => x.r.Categorie === 'Reizen');
+  ok('reizen gespreid over 12 maanden enkel met spread', sp.length === 12 && sp[0].a === -100 && C.rowsFor(cx, 'MATS').filter(x => x.r.Categorie === 'Reizen').length === 1);
+  ok('VME-voorschot over 3 maanden', C.spreadMonths(d.transacties[8]) === 3);
+  ok('reis uit Nota', JSON.stringify(C.trips(C.rowsFor(cx, 'MATS'))) === '[{"naam":"Barcelona maart 2026","bedrag":1200,"aantal":1}]');
+  ok('CHECK geteld', C.checkRows(C.rowsFor(cx, 'MATS')).length === 1);
+  const w = C.wealth(cx, 'MATS');
+  ok('vermogen: eigen + helft gezamenlijk, verschil met vorige maand', w.totaal === 1450.5 && w.verschil === 250.5 && w.zonderVorig === 1, JSON.stringify(w));
 }
 
 console.log('\n' + (n - fail) + '/' + n + ' geslaagd');

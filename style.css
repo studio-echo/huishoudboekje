@@ -402,3 +402,8 @@ body.fit #status .notes{position:absolute;right:var(--gut);z-index:25;max-width:
 .pkc{flex:1;min-height:110px;display:flex;flex-direction:column;gap:6px}
 .gl2.mu{color:var(--muted)}
 .pkh .chips{flex:1 1 0;min-width:0}
+.list li.miss b{color:var(--muted)}.list li.miss small{white-space:normal}
+.lk.ck{color:var(--neg);font-size:12px;padding:0;margin-top:2px}
+.stats.sm{flex:0 0 auto;margin-bottom:6px}.stats.sm b{font-size:18px}
+[data-id=verloop] .chart,[data-id=bijdrage] .chart{min-height:150px}
+.list li.miss>div{display:flex;flex-direction:column;gap:2px}.list li.miss small{display:block}

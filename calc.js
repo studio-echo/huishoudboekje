@@ -25,27 +25,38 @@
   function typeOf(ctx, cat) { return ctx.typ[cat] || 'uitgave'; }
   function ym(d) { return String(d).slice(0, 7); }
 
-  /* Rijen met effectief bedrag voor persoon p, neutrale categorieen eruit */
-  function rowsFor(ctx, p, filter) {
-    var out = [];
+  /* Rijen met effectief bedrag voor persoon p. Vier groepen volgens Categorieen.Type: inkomen, uitgave, sparen
+     en neutraal; neutraal (o.a. Interne overdracht, kaartafrekeningen) telt nergens mee.
+     Samen = enkel de gemeenschappelijke potten (gezamenlijke rekening en kredietkaart), elk bedrag x (Aandeel_Mats + Aandeel_Sofie).
+     Periodieke uitgaven (Reizen, VME-voorschot, kooklessen, Nota met 'periodiek' of 'geannualiseerd') worden over hun periode
+     gespreid als opts.spread, zodat ze geen maandpiek geven in maandgrafieken. Zonder spread: echte bedragen op de echte datum. */
+  function rowsFor(ctx, p, filter, opts) {
+    var out = [], raw = !(opts && opts.spread);
     ctx.data.transacties.forEach(function (r) {
       var t = typeOf(ctx, r.Categorie), w;
-      if (p === 'SAMEN') {
-        /* Samen = enkel de gemeenschappelijke potten: de gezamenlijke rekening en de kredietkaart.
-           Stortingen van Mats en Sofie op de gezamenlijke rekening tellen als inkomen van de gemeenschappelijke pot. */
-        if (!isCommon(ctx, r.Rekening_ID)) return;
-        if (t === 'neutraal') { if (!(r.Bedrag > 0 && ctx.own[r.Rekening_ID] === JOINT)) return; t = 'inkomen'; }
-        w = 1;
-      } else {
-        if (t === 'neutraal') return;
-        w = weight(r, p);
-      }
+      if (t === 'neutraal') return;
+      if (p === 'SAMEN') { if (!isCommon(ctx, r.Rekening_ID)) return; w = (+r.Aandeel_Mats || 0) + (+r.Aandeel_Sofie || 0); }
+      else w = weight(r, p);
       if (!w) return;
       if (filter && !filter(r)) return;
-      out.push({ r: r, t: t, a: r.Bedrag * w, m: ym(r.Datum) });
+      var a = r.Bedrag * w, m = ym(r.Datum), n = raw || t !== 'uitgave' ? 0 : spreadMonths(r);
+      if (n > 1) for (var i = 0; i < n; i++) out.push({ r: r, t: t, a: a / n, m: addM(m, i), sp: n, si: i });
+      else out.push({ r: r, t: t, a: a, m: m });
     });
     return out;
   }
+  function txt(r) { return String((r.Tegenpartij || '') + ' ' + (r.Omschrijving || '') + ' ' + (r.Nota || '')).toLowerCase(); }
+  /* Over hoeveel maanden een periodieke uitgave gespreid wordt (0 = niet) */
+  function spreadMonths(r) {
+    if (+r.Eenmalig) return 0;
+    var s = txt(r), nota = String(r.Nota || '').toLowerCase();
+    if (r.Categorie === 'Reizen') return 12;
+    if (/\bvme\b/.test(s) && /voorschot/.test(s)) return 3;
+    if (/kookles/.test(s)) return 12;
+    if (/periodiek|geannualiseerd|annualiseren/.test(nota)) { var k = nota.match(/(\d+)[- ]?maand/); return k ? Math.min(36, +k[1]) : 12; }
+    return 0;
+  }
+  function isCheck(r) { return /^\s*check\b/i.test(String(r.Nota || '')); }
   function metrics(rows, structOnly) {
     var inc = 0, incS = 0, exp = 0, sav = 0, res = 0, struct = 0, once = 0;
     rows.forEach(function (x) {
@@ -332,6 +343,75 @@
     };
   }
 
+  /* ---------- bijdragen gezamenlijke rekening ---------- */
+  /* Storting per persoon = positieve bedragen op de gezamenlijke rekening in 'Overdracht gezamenlijke rekening',
+     toegewezen via Aandeel_Mats / Aandeel_Sofie (0/0 = niet toegewezen, apart geteld). Aandeel in de kosten =
+     niet-neutrale uitgaven op de gezamenlijke rekening en de gezamenlijke kredietkaart (die wordt via de
+     gezamenlijke rekening afgerekend), bedrag x aandeel. Per maand voor de grafiek. */
+  function jointContrib(ctx, from, to) {
+    var per = {}, tot = { dep: { MATS: 0, SOFIE: 0 }, share: { MATS: 0, SOFIE: 0 }, kosten: 0, los: 0, losBedrag: 0 };
+    range(from, to).forEach(function (m) { per[m] = { m: m, dep: { MATS: 0, SOFIE: 0 }, kosten: 0 }; });
+    ctx.data.transacties.forEach(function (r) {
+      var m = ym(r.Datum); if (!per[m] || !isCommon(ctx, r.Rekening_ID)) return;
+      var t = typeOf(ctx, r.Categorie), am = +r.Aandeel_Mats || 0, as = +r.Aandeel_Sofie || 0;
+      if (r.Categorie === 'Overdracht gezamenlijke rekening' && r.Bedrag > 0 && ctx.own[r.Rekening_ID] === JOINT) {
+        if (!am && !as) { tot.los++; tot.losBedrag += r.Bedrag; return; }
+        per[m].dep.MATS += r.Bedrag * am; per[m].dep.SOFIE += r.Bedrag * as;
+        tot.dep.MATS += r.Bedrag * am; tot.dep.SOFIE += r.Bedrag * as; return;
+      }
+      if (t !== 'uitgave') return;
+      tot.share.MATS -= r.Bedrag * am; tot.share.SOFIE -= r.Bedrag * as;
+      per[m].kosten -= r.Bedrag * (am + as); tot.kosten -= r.Bedrag * (am + as);
+    });
+    tot.dekking = { MATS: tot.share.MATS > 0 ? tot.dep.MATS / tot.share.MATS : null, SOFIE: tot.share.SOFIE > 0 ? tot.dep.SOFIE / tot.share.SOFIE : null };
+    tot.saldo = { MATS: tot.dep.MATS - tot.share.MATS, SOFIE: tot.dep.SOFIE - tot.share.SOFIE };
+    tot.maanden = Object.keys(per).sort().map(function (k) { return per[k]; });
+    return tot;
+  }
+
+  /* ---------- vermogen ---------- */
+  /* Laatste saldo per zichtrekening (Saldi) x eigen deel, ETF-waarde (Beleggingen) en wat ontbreekt.
+     Verschil met vorige maand: saldo op of voor het einde van de vorige maand. Niets wordt verzonnen. */
+  function wealth(ctx, view) {
+    var parts = [], missing = [], byAcc = {};
+    (ctx.data.saldi || []).forEach(function (s) { (byAcc[s.Rekening_ID] = byAcc[s.Rekening_ID] || []).push({ d: String(s.Datum).slice(0, 10), v: num_(s.Saldo) }); });
+    Object.keys(byAcc).forEach(function (id) {
+      var own = ctx.own[id], a = ctx.acc[id] || {}, f;
+      if (view === 'SAMEN') f = own === JOINT ? 1 : 0; else f = own === JOINT ? 0.5 : own === OWNER[view] ? 1 : 0;
+      if (!f || /krediet/i.test(a.Type || '')) return;
+      var l = byAcc[id].sort(function (x, y) { return x.d < y.d ? -1 : 1; }), last = l[l.length - 1];
+      var cut = prev(ym(last.d)) + '-31', pr = l.filter(function (x) { return x.d <= cut; }).pop();
+      parts.push({ soort: /spaar/i.test(a.Type || '') ? 'sparen' : 'rekening', naam: (a.Naam || id) + (f < 1 ? ' (jouw helft)' : ''), v: last.v * f, vorig: pr ? pr.v * f : null, datum: last.d });
+    });
+    var inv = view === 'SAMEN' ? null : investments(ctx, view);
+    if (inv) {
+      var h = inv.hist || [], pv = h.length > 1 ? h[h.length - 2].v : null;
+      parts.push({ soort: 'beleggen', naam: 'ETF\'s (marktwaarde)', v: inv.waarde, vorig: pv, datum: inv.datum });
+    }
+    /* stortingen naar sparen of beleggen zonder saldo of marktwaarde: enkel inleg bekend */
+    var inleg = 0;
+    rowsFor(ctx, view).forEach(function (x) { if (x.t === 'sparen') inleg -= x.a; });
+    var hasSav = parts.some(function (p) { return p.soort === 'sparen'; });
+    if (inleg > 0.5 && !hasSav) missing.push({ naam: 'Spaarrekening', tekst: 'geen saldo in het blad, enkel stortingen bekend (' + Math.round(inleg) + ' euro in totaal, inclusief ETF-stortingen)' });
+    var tot = parts.reduce(function (a, p) { return a + p.v; }, 0), withPrev = parts.filter(function (p) { return p.vorig != null; });
+    return { parts: parts, missing: missing, totaal: tot, verschil: withPrev.length ? withPrev.reduce(function (a, p) { return a + p.v - p.vorig; }, 0) : null, zonderVorig: parts.length - withPrev.length };
+  }
+
+  /* ---------- reizen ---------- */
+  /* Per reis uit de Nota-tag 'Reis: <bestemming> <maand> <jaar>' */
+  function trips(rows) {
+    var g = {};
+    rows.forEach(function (x) {
+      if (x.t !== 'uitgave') return;
+      var k = String(x.r.Nota || '').match(/reis:\s*([^().,;]+?\s(?:jan|feb|maart|mrt|apr|april|mei|jun|juni|jul|juli|aug|sep|sept|okt|nov|dec)[a-z]*\.?\s\d{4})/i);
+      if (!k) return;
+      var key = k[1].replace(/\s+/g, ' ').trim(), o = g[key.toLowerCase()] = g[key.toLowerCase()] || { naam: key, bedrag: 0, aantal: 0 };
+      o.bedrag -= x.a; o.aantal++;
+    });
+    return Object.keys(g).map(function (k) { return g[k]; }).sort(function (a, b) { return b.bedrag - a.bedrag; });
+  }
+  function checkRows(rows) { var seen = [], o = []; rows.forEach(function (x) { if (isCheck(x.r) && seen.indexOf(x.r) < 0) { seen.push(x.r); o.push(x); } }); return o; }
+
   /* ---------- buffer ---------- */
   /* Laatste saldo per rekening x eigen deel, gedeeld door de gemiddelde niet-eenmalige uitgaven per maand
      over de laatste n volledige maanden. Spaarrekeningen staan niet in het blad en tellen dus niet mee. */
@@ -562,7 +642,7 @@
   function monthNameNl(m) { return m ? MN[+m.slice(5) - 1] : '?'; }
 
   return {
-    PERSONS: PERSONS, OWNER: OWNER, weight: weight, makeCtx: makeCtx, typeOf: typeOf, rowsFor: rowsFor, metrics: metrics,
+    PERSONS: PERSONS, OWNER: OWNER, jointContrib: jointContrib, wealth: wealth, trips: trips, isCheck: isCheck, checkRows: checkRows, spreadMonths: spreadMonths, weight: weight, makeCtx: makeCtx, typeOf: typeOf, rowsFor: rowsFor, metrics: metrics,
     inPeriod: inPeriod, months: months, lastDates: lastDates, dataQuality: dataQuality, prev: prev, addM: addM, range: range,
     byMonth: byMonth, byCategory: byCategory, catAvgPrev: catAvgPrev, recurring: recurring, isLoan: isLoan, usage: usage,
     topCounterparties: topCounterparties, largest: largest, householdSplit: householdSplit, fairness: fairness,

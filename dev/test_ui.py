@@ -133,11 +133,11 @@ with sync_playwright() as pw:
         if page.locator('#sheet .list li').count() < 1: fails.append('doorklik toont geen betalingen ' + sel)
         page.keyboard.press('Escape')
     page.click('[data-pg=uitgaven]'); page.wait_for_timeout(320)
-    page.click('[data-more=winkels]')
+    page.click('[data-more=eenmalig]')
     if page.locator('#sheet .list li').count() < 6: fails.append('Toon alle toont te weinig')
     page.keyboard.press('Escape')
     page.click('[data-pg=overzicht]'); page.wait_for_timeout(320)
-    page.locator('.lc[data-month="2026-05"]').first.click()
+    page.locator('[data-id=verloop] [data-month="2026-05"]').first.click()
     lab = page.locator('.mlabel').inner_text()
     if 'mei' not in lab: fails.append('tik op staaf kiest maand niet: ' + lab)
     page.click('[data-st="1"]')
@@ -171,7 +171,7 @@ with sync_playwright() as pw:
     # aanraken: lang drukken en slepen (CDP touch)
     page.evaluate('scrollTo(0, 0)'); page.wait_for_timeout(100)
     cdp = ctx.new_cdp_session(page)
-    box = page.locator('[data-id=spaarratio] .en').bounding_box(); tgt = page.locator('[data-id=verloop]').bounding_box()
+    box = page.locator('[data-id=spaarratio] .en').bounding_box(); tgt = page.locator('[data-id=vermogen]').bounding_box()
     x0, y0 = box['x'] + 30, box['y'] + 10
     cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': x0, 'y': y0}]})
     page.wait_for_timeout(450)
@@ -225,11 +225,11 @@ with sync_playwright() as pw:
 
     # 2b. gedeelde indeling uit het blad wint van wat op het toestel staat
     fx = json.load(open(os.path.join(ROOT, 'data', 'fixture.json')))
-    fx3 = dict(fx); fx3['indeling'] = {'v': 5, 'MATS:overzicht': [{'id': 'gemiddelde', 'size': 'L'}, {'id': 'inkomenflow', 'size': 'L'}]}
+    fx3 = dict(fx); fx3['indeling'] = {'v': 6, 'MATS:overzicht': [{'id': 'gemiddelde', 'size': 'L'}, {'id': 'inkomenflow', 'size': 'L'}]}
     errors = []
     ctx, page = new_page(b, 820, 1180, 'light', errors, fx3)
     page.goto(BASE + 'index.html?src=fixture'); page.wait_for_selector('#grid .w')
-    page.evaluate("() => { localStorage.setItem('hb_l4_MATS:overzicht', JSON.stringify({v:5,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS'); localStorage.removeItem('hb_page_MATS') }")
+    page.evaluate("() => { localStorage.setItem('hb_l4_MATS:overzicht', JSON.stringify({v:6,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS'); localStorage.removeItem('hb_page_MATS') }")
     page.reload(); page.wait_for_selector('#grid .w')
     ids = page.evaluate("() => [...document.querySelectorAll('#grid .w')].map(t => t.dataset.id)")
     if ids != ['gemiddelde', 'inkomenflow']: fails.append('gedeelde indeling niet gebruikt: ' + ','.join(ids))
