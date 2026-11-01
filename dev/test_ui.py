@@ -158,8 +158,8 @@ with sync_playwright() as pw:
     if not page.locator('[data-add=prognose]').count(): fails.append('verwijderde widget niet in galerij')
     if page.locator('[data-add=eerlijkheid]').count(): fails.append('eerlijkheid in galerij van MATS')
     if page.locator('[data-add=buffer]').count(): fails.append('widget van een andere pagina staat in de galerij')
-    page.click('[data-add=vastvrij]')
-    if not any(x.startswith('vastvrij') for x in order()): fails.append('toevoegen werkt niet')
+    page.click('[data-add=gemiddelde]')
+    if not any(x.startswith('gemiddelde') for x in order()): fails.append('toevoegen werkt niet')
     # slepen met de muis via de greep
     page.evaluate('scrollTo(0, 0)'); page.wait_for_timeout(100)
     a = page.locator('[data-hd=gespaard]').bounding_box(); t = page.locator('[data-id=verloop]').bounding_box()
@@ -182,11 +182,11 @@ with sync_playwright() as pw:
     ids = [x.split(':')[0] for x in order()]
     if ids.index('spaarratio') > 1: fails.append('lang drukken en slepen (touch) werkt niet: ' + ','.join(ids[:4]))
     saved = page.evaluate("() => localStorage.getItem('hb_l4_MATS:overzicht')")
-    if not saved or 'vastvrij' not in saved: fails.append('indeling niet bewaard')
+    if not saved or 'gemiddelde' not in saved: fails.append('indeling niet bewaard')
     page.reload(); page.wait_for_selector('#grid .w')
-    if not any(x.startswith('vastvrij') for x in order()): fails.append('indeling niet hersteld na herladen')
+    if not any(x.startswith('gemiddelde') for x in order()): fails.append('indeling niet hersteld na herladen')
     page.click('#edit'); page.click('[data-act=reset]'); page.click('#edit')
-    if any(x.startswith('vastvrij') for x in order()): fails.append('standaard herstellen werkt niet')
+    if any(x.startswith('gemiddelde') for x in order()): fails.append('standaard herstellen werkt niet')
     # lang drukken buiten bewerkmodus opent bewerkmodus
     box = page.locator('[data-id=inkomen] .wt').bounding_box()
     cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': box['x'] + 20, 'y': box['y'] + 8}]})
@@ -225,14 +225,14 @@ with sync_playwright() as pw:
 
     # 2b. gedeelde indeling uit het blad wint van wat op het toestel staat
     fx = json.load(open(os.path.join(ROOT, 'data', 'fixture.json')))
-    fx3 = dict(fx); fx3['indeling'] = {'v': 5, 'MATS:overzicht': [{'id': 'vastvrij', 'size': 'L'}, {'id': 'auto', 'size': 'L'}]}
+    fx3 = dict(fx); fx3['indeling'] = {'v': 5, 'MATS:overzicht': [{'id': 'gemiddelde', 'size': 'L'}, {'id': 'inkomenflow', 'size': 'L'}]}
     errors = []
     ctx, page = new_page(b, 820, 1180, 'light', errors, fx3)
     page.goto(BASE + 'index.html?src=fixture'); page.wait_for_selector('#grid .w')
     page.evaluate("() => { localStorage.setItem('hb_l4_MATS:overzicht', JSON.stringify({v:5,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS'); localStorage.removeItem('hb_page_MATS') }")
     page.reload(); page.wait_for_selector('#grid .w')
     ids = page.evaluate("() => [...document.querySelectorAll('#grid .w')].map(t => t.dataset.id)")
-    if ids != ['vastvrij', 'auto']: fails.append('gedeelde indeling niet gebruikt: ' + ','.join(ids))
+    if ids != ['gemiddelde', 'inkomenflow']: fails.append('gedeelde indeling niet gebruikt: ' + ','.join(ids))
     check(page, 'gedeelde indeling')
     for e in errors: fails.append('gedeelde indeling console: ' + e)
     ctx.close()

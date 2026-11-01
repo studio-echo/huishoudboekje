@@ -38,7 +38,7 @@
     { id: 'vastsoort', naam: 'Vaste kosten per soort', h: h(2, 2, 2), views: ALL },
     { id: 'vastelasten', naam: 'Vaste kosten en abonnementen', h: h(2, 4, 4), views: ALL },
     { id: 'komend', naam: 'Wat eraan komt', h: h(2, 2, 2), views: ALL },
-    { id: 'auto', naam: 'Wat kost de auto', h: h(2, 2, 2), views: ALL },
+    { id: 'auto', naam: 'Wat kost de auto', h: h(2, 2, 2), views: ['SOFIE'] },
     { id: 'vastvrij', naam: 'Vast versus vrij', h: h(2, 2, 2), views: ALL },
     { id: 'spaarverloop', naam: 'Gespaard per maand', h: h(2, 2, 2), views: ALL },
     { id: 'beleggingen', naam: 'Beleggingen (ETF)', h: h(1, 2, 2), views: ALL },
@@ -61,6 +61,9 @@
     uitgaven: [['donut', 'M'], ['categorieen', 'M'], ['winkels', 'S'], ['eenmalig', 'S']],
     pockets: [['pockets', 'L'], ['regel', 'L']],
     vast: [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'S'], ['auto', 'S']],
+    /* Enkel Sofie heeft een auto; bij Mats en Samen krijgt Wat eraan komt die plaats. */
+    'MATS:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'M']],
+    'SAMEN:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'M']],
     sparen: [['spaarverloop', 'L'], ['beleggingen', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['opzij', 'M']],
     fire: [['fire', 'L'], ['fireinst', 'L']],
     jaar: [['jaaroverzicht', 'L']],
