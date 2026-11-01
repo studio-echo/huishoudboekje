@@ -102,6 +102,10 @@
   }
   /* Kwaliteit van de data: laatste volledige maand, lopende maanden, rekeningen zonder recente boekingen.
      Een maand is volledig als alle zichtrekeningen tot (bijna) het einde van die maand ingeladen zijn. */
+  function daysAgo(d, today) {
+    var t = today ? new Date(today) : new Date();
+    return (t - new Date(String(d).slice(0, 10) + 'T00:00:00')) / 864e5;
+  }
   function dataQuality(ctx) {
     var ld = lastDates(ctx), ms = months(ctx), rek = ctx.data.rekeningen || [];
     var key = rek.filter(function (a) { return /zicht/i.test(a.Type || '') && usage(a) === 'maandelijks' && active(a) && ld[a.Rekening_ID]; });
@@ -112,7 +116,8 @@
     if (minLast) { var mm = ym(minLast); lastComplete = +minLast.slice(8) >= lastDayOf(mm) - 3 ? mm : prev(mm); }
     var partial = ms.filter(function (m) { return m > lastComplete; });
     var stale = rek.filter(function (a) {
-      return active(a) && usage(a) === 'maandelijks' && ld[a.Rekening_ID] && ym(ld[a.Rekening_ID]) < lastComplete;
+      /* Pas melden als de laatste boeking meer dan een maand oud is: de gegevens komen maandelijks binnen. */
+      return active(a) && usage(a) === 'maandelijks' && ld[a.Rekening_ID] && ym(ld[a.Rekening_ID]) < lastComplete && daysAgo(ld[a.Rekening_ID], ctx.data.vandaag) > 31;
     }).map(function (a) { return a.Naam || a.Rekening_ID; });
     var known = {}, unknown = {};
     (ctx.data.categorieen || []).forEach(function (c) { known[c.Categorie] = 1; });
@@ -539,7 +544,7 @@
   /* level 'alert' = echte onderbreking, 'note' = aandachtspunt, 'foot' = voetnoot (enkel in Dataoverzicht) */
   function notes(ctx, dq, view, from, to) {
     var o = [];
-    if (dq.stale.length) o.push({ level: 'note', id: 'stale', text: dq.stale.join(', ') + ': geen boekingen in ' + monthNameNl(dq.lastComplete) + '. Gebruik je die rekening nog maandelijks, dan ontbreken er uitgaven. Zet anders Gebruik op "af en toe" in Rekeningen.' });
+    if (dq.stale.length) o.push({ level: 'note', id: 'stale', text: dq.stale.join(', ') + ': al meer dan een maand niet bijgewerkt. Laad de nieuwe afschriften op, of zet Gebruik op "af en toe" in Rekeningen als je die rekening niet meer maandelijks gebruikt.' });
     if ((view === 'SOFIE' || view === 'SAMEN') && !dq.sofieComplete) o.push({ level: 'note', id: 'sofie', text: 'Sofie heeft nog geen eigen rekeningen in het blad. Haar cijfers komen enkel van de gezamenlijke rekening en gedeelde kaartbetalingen.' });
     var unk = Object.keys(dq.unknownCategories || {});
     if (unk.length) o.push({ level: 'note', id: 'cat', text: 'Onbekende categorie in Transacties: ' + unk.join(', ') + '. Die rijen tellen als uitgave. Voeg ze toe aan Categorieen.' });

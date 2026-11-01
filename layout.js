@@ -15,6 +15,7 @@
     { id: 'vast', naam: 'Vaste kosten', views: ALL },
     { id: 'sparen', naam: 'Sparen', views: ALL },
     { id: 'fire', naam: 'FIRE', views: ALL },
+    { id: 'jaar', naam: 'Jaaroverzicht', views: ALL },
     { id: 'samen', naam: 'Samen', views: ['SAMEN'] }
   ];
 
@@ -45,6 +46,7 @@
     { id: 'spaardoel', naam: 'Spaardoel', h: h(1, 1, 1), views: ALL },
     { id: 'opzij', naam: 'Totaal opzij gezet', h: h(1, 1, 1), views: ALL },
     { id: 'fire', naam: 'FIRE', h: h(2, 3, 3), views: ALL },
+    { id: 'jaaroverzicht', naam: 'Jaaroverzicht', h: h(4, 4, 4), views: ALL },
     { id: 'fireinst', naam: 'FIRE-instellingen', h: h(1, 1, 1), views: ALL },
     { id: 'gemiddelde', naam: 'Gemiddelde per maand', h: h(1, 1, 1), views: ALL },
     { id: 'inkomenflow', naam: 'Waar ging het inkomen heen', h: h(2, 2, 2), views: ALL },
@@ -61,6 +63,7 @@
     vast: [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'S'], ['auto', 'S']],
     sparen: [['spaarverloop', 'L'], ['beleggingen', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['opzij', 'M']],
     fire: [['fire', 'L'], ['fireinst', 'L']],
+    jaar: [['jaaroverzicht', 'L']],
     samen: [['eerlijkheid', 'M'], ['gedeeld', 'M'], ['inkomenflow', 'L']],
     /* Samen = de gemeenschappelijke pot, geen optelsom: niets wordt samen gespaard, dus geen spaartegels of 50/30/20. */
     'SAMEN:overzicht': [['verloop', 'L'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gemiddelde', 'M'], ['prognose', 'M'], ['veranderingen', 'M']],

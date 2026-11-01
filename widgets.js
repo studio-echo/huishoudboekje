@@ -303,8 +303,42 @@ function signals(M) {
   });
   M.rec().forEach(function (r) { if (r.loopt && r.stijging) o.push({ w: r.stijging * 12, t: r.naam + ' werd duurder', s: 'nu ' + eur(r.laatsteBedrag) + ' per maand, ' + eur(r.stijging * 12) + ' per jaar extra', v: '<span class="neg">▲ ' + eur(r.stijging) + '</span>', dd: 'cp:' + encodeURIComponent(r.key) }); });
   M.rows.forEach(function (x) { if (x.t === 'uitgave' && x.r.Eenmalig && -x.a >= 50) o.push({ w: -x.a * 0.5, t: C.cleanName(x.r.Tegenpartij || x.r.Omschrijving), s: 'eenmalig · ' + dNice(x.r.Datum) + ' · ' + x.r.Categorie, v: eur(-x.a) }); });
+  /* Grote kwartaal- of jaarbetalingen die de komende 2 maanden verwacht worden, met de pocket die ze opvangt */
+  var lc = M.dq.lastComplete, ps = C.pockets(M.ctx, M.view, [], 1);
+  C.upcoming(C.inPeriod(M.all, M.V[0], lc), M.freq().keys, lc).forEach(function (b) {
+    if (b.bedrag < 100 || b.volgende <= lc || b.volgende > C.addM(lc, 2)) return;
+    var p = ps.filter(function (x) { return x.cats.indexOf(b.cat) >= 0; })[0];
+    o.push({ bill: 1, w: 1e9 + b.bedrag, t: b.naam + ' komt eraan', s: (b.kind === 'kwartaal' ? 'per kwartaal' : 'per jaar') + ' · verwacht in ' + mLong(b.volgende) + (p ? ' · pocket ' + p.naam + ' (' + eur(p.budget) + ' per maand)' : ''), v: '<span class="neg">' + eur(b.bedrag) + '</span>', dd: 'cp:' + encodeURIComponent(b.key) });
+  });
   return o.sort(function (a, b) { return b.w - a.w; });
 }
+/* Jaaroverzicht: het laatste volledige jaar (of dit jaar tot nu, als er nog geen volledig jaar is) */
+R.jaaroverzicht = function (M, size) {
+  var lc = M.dq.lastComplete, first = M.dq.months[0] || lc;
+  if (!lc) return { title: 'Jaaroverzicht', body: empty('Nog geen volledige maand.') };
+  var y = lc.slice(5) === '12' ? +lc.slice(0, 4) : +lc.slice(0, 4) - 1, sofar = false;
+  if (first > y + '-12') { y = +lc.slice(0, 4); sofar = true; }
+  var from = first > y + '-01' ? first : y + '-01', to = sofar ? lc : y + '-12';
+  var rows = C.inPeriod(M.all, from, to), mt = C.metrics(rows), ms = C.range(from, to);
+  var prev = C.inPeriod(M.all, (y - 1) + '-01', (y - 1) + '-12'), pm = prev.length && first <= (y - 1) + '-01' ? C.metrics(prev) : null;
+  var label = sofar ? y + ' tot en met ' + mLong(lc) : String(y);
+  var sav = M.view !== 'SAMEN';
+  var stats = [[eur(mt.inkomen), M.view === 'SAMEN' ? 'gestort' : 'inkomen'], [eur(-mt.uitgaven), 'uitgaven' + (pm && pm.uitgaven ? ' (' + (mt.uitgaven < pm.uitgaven ? '▲ ' : '▼ ') + pct(Math.abs(mt.uitgaven / pm.uitgaven - 1), 0) + ' tegenover ' + (y - 1) + ')' : '')]];
+  if (sav) stats.push([eur(mt.gespaard), 'gespaard'], [pct(mt.spaarratio, 0), 'spaarratio']);
+  else stats.push([eur(mt.resultaat), 'over in de pot']);
+  /* Pockets: in hoeveel maanden bleef elke pocket binnen budget */
+  var pk = 0, pt = 0;
+  ms.forEach(function (m) { C.pockets(M.ctx, M.view, C.inPeriod(rows, m, m), 1).forEach(function (p) { pt++; if (p.uitgegeven <= p.budget) pk++; }); });
+  if (pt) stats.push([pk + '/' + pt, 'keer een pocket binnen budget']);
+  var bc = C.byCategory(rows), cats = Object.keys(bc).map(function (k) { return { k: k, v: -bc[k] }; }).filter(function (c) { return c.v >= 1; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 5);
+  var mx = cats.length ? cats[0].v : 1;
+  var big = C.largest(rows, 3);
+  var title = sav ? label + ': ' + eur(mt.gespaard) + ' gespaard, ' + pct(mt.spaarratio, 0) + ' van ' + J(M, 'je', 'jullie') + ' inkomen' : label + ': ' + eur(-mt.uitgaven) + ' samen uitgegeven';
+  return { title: title, body: '<div class="stats">' + stats.map(function (x) { return '<div><b>' + x[0] + '</b><span>' + x[1] + '</span></div>'; }).join('') + '</div>' +
+    '<div class="cap">Grootste categorieën, per maand gemiddeld</div>' + '<ul class="list">' + cats.map(function (c) { return row({ t: c.k, s: eur(c.v / ms.length) + ' per maand', v: eur(c.v), bar: c.v / mx }); }).join('') + '</ul>' +
+    (big.length ? '<div class="cap">Grootste aankopen</div><ul class="list">' + big.map(function (b) { return row({ t: b.naam, s: dNice(b.datum) + ' · ' + b.cat, v: eur(b.bedrag) }); }).join('') + '</ul>' : '') };
+};
+
 R.gemiddelde = function (M, size) {
   var f = M.full(), n = f.length;
   if (!n) return { title: 'Gemiddelde per maand', body: empty('Nog geen volledige maand.') };
@@ -547,6 +581,7 @@ R.prognose = function (M, size) {
 R.veranderingen = function (M, size) {
   var sg = signals(M);
   if (!sg.length) return { title: 'Niets ongewoons ' + M.when, body: empty('Geen categorie wijkt sterk af en niets werd duurder.') };
+  if (sg[0].bill) return { title: sg[0].t + ': ' + sg[0].v.replace(/<[^>]+>/g, '') + ' in ' + sg[0].s.split('verwacht in ')[1].split(' ·')[0], body: fitList(sg, 'veranderingen') };
   return { title: sg.length === 1 ? '1 ding veranderde ' + M.when : sg.length + ' dingen veranderden ' + M.when, body: fitList(sg, 'veranderingen') };
 };
 
