@@ -18,6 +18,10 @@
     (data.rekeningen || []).forEach(function (a) { own[a.Rekening_ID] = a.Eigenaar; acc[a.Rekening_ID] = a; });
     return { typ: typ, own: own, acc: acc, data: data };
   }
+  function isCommon(ctx, id) {
+    var a = ctx.acc[id];
+    return ctx.own[id] === JOINT || (!!a && /krediet/i.test(a.Type || ''));
+  }
   function typeOf(ctx, cat) { return ctx.typ[cat] || 'uitgave'; }
   function ym(d) { return String(d).slice(0, 7); }
 
@@ -25,9 +29,17 @@
   function rowsFor(ctx, p, filter) {
     var out = [];
     ctx.data.transacties.forEach(function (r) {
-      var t = typeOf(ctx, r.Categorie);
-      if (t === 'neutraal') return;
-      var w = weight(r, p);
+      var t = typeOf(ctx, r.Categorie), w;
+      if (p === 'SAMEN') {
+        /* Samen = enkel de gemeenschappelijke potten: de gezamenlijke rekening en de kredietkaart.
+           Stortingen van Mats en Sofie op de gezamenlijke rekening tellen als inkomen van de gemeenschappelijke pot. */
+        if (!isCommon(ctx, r.Rekening_ID)) return;
+        if (t === 'neutraal') { if (!(r.Bedrag > 0 && ctx.own[r.Rekening_ID] === JOINT)) return; t = 'inkomen'; }
+        w = 1;
+      } else {
+        if (t === 'neutraal') return;
+        w = weight(r, p);
+      }
       if (!w) return;
       if (filter && !filter(r)) return;
       out.push({ r: r, t: t, a: r.Bedrag * w, m: ym(r.Datum) });

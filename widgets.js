@@ -267,7 +267,7 @@ R.inkomenflow = function (M, size) {
     { l: 'Gespaard', v: f.gespaard, c: 'var(--pos)' },
     { l: f.over >= 0 ? 'Over' : 'Tekort', v: Math.abs(f.over), c: f.over >= 0 ? 'var(--track)' : 'var(--neg)' }
   ];
-  var title = f.inkomen > 0 ? 'Vaste kosten nemen ' + pct(f.vast / f.inkomen, 0) + ' van ' + J(M, 'je', 'jullie') + ' inkomen' : 'Geen inkomen ' + M.when;
+  var title = f.inkomen <= 0 ? 'Geen inkomen ' + M.when : f.over >= 0 ? pct((f.gespaard + f.over) / f.inkomen, 0) + ' van ' + J(M, 'je', 'jullie') + ' inkomen werd niet uitgegeven' : J(M, 'Je', 'Jullie') + ' kwam' + (M.view === 'SAMEN' ? 'en' : '') + ' ' + eurAbs(f.over) + ' tekort ' + M.when;
   if (size === 'S' || f.inkomen <= 0) return { title: title, body: stack(parts) + legend(parts.slice(0, 2), f.inkomen > 0 ? f.inkomen : null) };
   var mx = Math.max.apply(null, parts.map(function (p) { return p.v; }).concat(1));
   return { title: title, body: '<div class="flow">' + parts.filter(function (p) { return p.v >= 0.5; }).map(function (p) {
@@ -560,10 +560,11 @@ R.donut = function (M, size) {
     body: '<div class="dw">' + pie(t.items, eur(t.tot), M.P.n > 1 ? 'per maand' : 'uitgegeven') + (size === 'S' ? '' : pieLegend(t.items, t.tot)) + '</div>' };
 };
 R.winkels = function (M, size) {
-  var tp = C.topCounterparties(loose(M), 1000);
-  if (!tp.length) return { title: 'Geen uitgaven ' + M.when, body: empty('Geen uitgaven.') };
+  /* Enkel plaatsen waar je terugkeert (2+ betalingen): losse grote aankopen staan al in 'Grootste losse uitgaven'. */
+  var all = C.topCounterparties(loose(M), 1000), tp = all.filter(function (b) { return b.aantal > 1; });
+  if (!tp.length) return { title: 'Geen terugkerende winkels ' + M.when, body: empty('Nergens meer dan één keer betaald.') };
   var mx = tp[0].bedrag;
-  return { title: 'Meest uitgegeven bij ' + tp[0].naam, body: fitList(tp.map(function (b) { return { t: b.naam, s: b.aantal + (b.aantal > 1 ? ' betalingen' : ' betaling'), v: eur(b.bedrag), bar: b.bedrag / mx, dd: 'cp:' + encodeURIComponent(b.key) }; }), 'winkels') };
+  return { title: tp[0].naam + ': ' + tp[0].aantal + ' keer, samen ' + eur(tp[0].bedrag), body: fitList(tp.map(function (b) { return { t: b.naam, s: b.aantal + (b.aantal > 1 ? ' betalingen' : ' betaling'), v: eur(b.bedrag), bar: b.bedrag / mx, dd: 'cp:' + encodeURIComponent(b.key) }; }), 'winkels') };
 };
 R.eenmalig = function (M, size) {
   var big = C.largest(loose(M), 1000);

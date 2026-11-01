@@ -135,18 +135,18 @@ const V3 = (v, p) => L.defaults(v, p);
 }));
 ok('MATS en SOFIE zelfde pagina\'s', JSON.stringify(L.pages('MATS').map(p => V3('MATS', p.id))) === JSON.stringify(L.pages('SOFIE').map(p => V3('SOFIE', p.id))));
 ok('pagina Samen enkel bij SAMEN, FIRE overal', L.pages('MATS').length === 6 && L.pages('SAMEN').length === 7 && L.pages('SAMEN').some(p => p.id === 'fire'));
-ok('gedeelde indeling opgeschoond, geen dubbels over pagina\'s', JSON.stringify(L.fromShared({ v: 4, 'MATS:overzicht': [{ id: 'auto', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], 'MATS:vast': [{ id: 'auto', size: 'S' }, { id: 'buffer', size: 'S' }] })) === '{"MATS:overzicht":[{"id":"auto","size":"L"}],"MATS:vast":[{"id":"buffer","size":"S"}]}');
+ok('gedeelde indeling opgeschoond, geen dubbels over pagina\'s', JSON.stringify(L.fromShared({ v: 5, 'MATS:overzicht': [{ id: 'auto', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], 'MATS:vast': [{ id: 'auto', size: 'S' }, { id: 'buffer', size: 'S' }] })) === '{"MATS:overzicht":[{"id":"auto","size":"L"}],"MATS:vast":[{"id":"buffer","size":"S"}]}');
 ok('oude gedeelde indeling genegeerd', JSON.stringify(L.fromShared({ MATS: [{ id: 'auto', size: 'L' }] })) === '{}');
 ok('eerlijkheid enkel bij SAMEN', !L.allowed('eerlijkheid', 'MATS') && L.allowed('eerlijkheid', 'SAMEN'));
 ok('ongeveer 20 widgets', L.CATALOG.length >= 19, L.CATALOG.length);
-const saved = L.parseSaved(JSON.stringify({ v: 4, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
+const saved = L.parseSaved(JSON.stringify({ v: 5, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
 ok('opgeslagen indeling opgeschoond', JSON.stringify(saved) === '[{"id":"inkomen","size":"L"},{"id":"buffer","size":"M"}]', JSON.stringify(saved));
 ok('kapotte of oude opslag geeft null', L.parseSaved('{kapot', 'MATS') === null && L.parseSaved(null, 'MATS') === null && L.parseSaved('{"v":2,"items":[]}', 'MATS') === null);
 ok('galerij toont wat op geen pagina staat', L.gallery(saved, 'MATS').every(w => w.id !== 'inkomen' && w.id !== 'buffer') && L.gallery(saved, 'MATS').some(w => w.id === 'auto') && !L.gallery(saved, 'MATS').some(w => w.id === 'eerlijkheid'));
 ok('verplaatsen', L.move([{ id: 'a' }, { id: 'b' }, { id: 'c' }], 0, 2).map(x => x.id).join('') === 'bca');
 ok('volgende grootte', L.nextSize('S') === 'M' && L.nextSize('L') === 'S');
 const sh = L.toShared(k => L.defaults(...k.split(':')));
-ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) === JSON.stringify(L.defaults('SAMEN', 'samen')) && sh.v === 4);
+ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) === JSON.stringify(L.defaults('SAMEN', 'samen')) && sh.v === 5);
 
 /* ---------- nieuwe berekeningen, verzonnen voorbeeld ---------- */
 {

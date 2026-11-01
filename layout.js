@@ -4,7 +4,7 @@
   else root.Layout = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-  var VERSION = 4, SIZES = ['S', 'M', 'L'], ROWS = 4;
+  var VERSION = 5, SIZES = ['S', 'M', 'L'], ROWS = 4;
   var ALL = ['MATS', 'SOFIE', 'SAMEN'];
 
   /* Pagina's om tussen te vegen. Elke standaardpagina vult precies 4 rijen van 4 kolommen (een iPad liggend). */
@@ -61,13 +61,16 @@
     vast: [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'S'], ['auto', 'S']],
     sparen: [['spaarverloop', 'L'], ['beleggingen', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['opzij', 'M']],
     fire: [['fire', 'L'], ['fireinst', 'L']],
-    samen: [['eerlijkheid', 'M'], ['gedeeld', 'M'], ['inkomenflow', 'L']]
+    samen: [['eerlijkheid', 'M'], ['gedeeld', 'M'], ['inkomenflow', 'L']],
+    /* Samen = de gemeenschappelijke pot, geen optelsom: niets wordt samen gespaard, dus geen spaartegels of 50/30/20. */
+    'SAMEN:overzicht': [['verloop', 'L'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gemiddelde', 'M'], ['prognose', 'M'], ['veranderingen', 'M']],
+    'SAMEN:pockets': [['pockets', 'L'], ['buffer', 'L']]
   };
 
   function pages(view) { return PAGES.filter(function (p) { return p.views.indexOf(view) >= 0; }); }
   function key(view, page) { return view + ':' + page; }
   function allowed(id, view) { var w = BY_ID[id]; return !!w && w.views.indexOf(view) >= 0; }
-  function defaults(view, page) { return (D[page] || []).filter(function (x) { return allowed(x[0], view); }).map(function (x) { return { id: x[0], size: x[1] }; }); }
+  function defaults(view, page) { return (D[view + ':' + page] || D[page] || []).filter(function (x) { return allowed(x[0], view); }).map(function (x) { return { id: x[0], size: x[1] }; }); }
   /* Opschonen: onbekende of dubbele widgets eruit, foute grootte terug naar M. */
   function clean(items, view, taken) {
     var seen = taken || {}, out = [];
