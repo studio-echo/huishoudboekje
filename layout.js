@@ -14,7 +14,7 @@
     { id: 'pockets', naam: 'Pockets', views: ALL },
     { id: 'vast', naam: 'Vaste kosten', views: ALL },
     { id: 'sparen', naam: 'Sparen', views: ALL },
-    { id: 'fire', naam: 'FIRE', views: ['MATS', 'SOFIE'] },
+    { id: 'fire', naam: 'FIRE', views: ALL },
     { id: 'samen', naam: 'Samen', views: ['SAMEN'] }
   ];
 
@@ -44,8 +44,8 @@
     { id: 'buffer', naam: 'Buffer', h: h(1, 1, 1), views: ALL },
     { id: 'spaardoel', naam: 'Spaardoel', h: h(1, 1, 1), views: ALL },
     { id: 'opzij', naam: 'Totaal opzij gezet', h: h(1, 1, 1), views: ALL },
-    { id: 'fire', naam: 'FIRE', h: h(2, 3, 3), views: ['MATS', 'SOFIE'] },
-    { id: 'fireinst', naam: 'FIRE-instellingen', h: h(1, 1, 1), views: ['MATS', 'SOFIE'] },
+    { id: 'fire', naam: 'FIRE', h: h(2, 3, 3), views: ALL },
+    { id: 'fireinst', naam: 'FIRE-instellingen', h: h(1, 1, 1), views: ALL },
     { id: 'gemiddelde', naam: 'Gemiddelde per maand', h: h(1, 1, 1), views: ALL },
     { id: 'inkomenflow', naam: 'Waar ging het inkomen heen', h: h(2, 2, 2), views: ALL },
     { id: 'eerlijkheid', naam: 'Wie betaalde wat', h: h(2, 2, 2), views: ['SAMEN'] },

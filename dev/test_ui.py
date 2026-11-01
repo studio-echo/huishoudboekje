@@ -213,8 +213,8 @@ with sync_playwright() as pw:
     if page.locator('.pk').count() != 1: fails.append('pocket niet bewaard na herladen')
     # FIRE-instellingen
     page.click('[data-pg=fire]'); page.wait_for_timeout(320)
-    page.click('[data-act=fire]'); page.fill('[data-fk=GEBOORTEJAAR]', '1995'); page.fill('[data-fk=FIRE_DOEL]', '600000'); page.click('[data-act=firesave]'); page.wait_for_timeout(200)
-    if '600.000' not in page.locator('[data-id=fireinst]').inner_text(): fails.append('FIRE-doel niet overgenomen')
+    page.click('[data-act=fire]'); page.fill('[data-fk=GEBOORTEJAAR]', '1995'); page.fill('[data-fk=FIRE_DOEL]', '600000'); page.fill('[data-fk=BARISTA_DOEL]', '400000'); page.click('[data-act=firesave]'); page.wait_for_timeout(200)
+    if '€600k' not in page.locator('[data-id=fireinst]').inner_text() or 'Barista FIRE' not in page.locator('[data-id=fire]').inner_text(): fails.append('FIRE-doelen niet overgenomen: ' + page.locator('[data-id=fireinst]').inner_text())
     if ' op je ' not in page.locator('[data-id=fire] .wt').inner_text() and 'niet binnen' not in page.locator('[data-id=fire] .wt').inner_text(): fails.append('FIRE-titel zonder leeftijd: ' + page.locator('[data-id=fire] .wt').inner_text())
     # gegevens en rekeningen zitten in het menu
     page.click('#menu'); page.click('[data-act=data]')

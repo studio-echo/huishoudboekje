@@ -694,36 +694,43 @@ function fireModel(M) {
   var f = M.full(), n = f.length || 1, b = C.investments(M.ctx, M.view), buf = C.buffer(M.ctx, M.view, M.dq.lastComplete, 3);
   var exp = -f.reduce(function (a, x) { return a + x.uitgaven; }, 0) / n;
   var doel = C.num(setting(M, 'FIRE_DOEL')), voorlopig = !doel; if (!doel) doel = 25 * exp * 12;
+  var barista = C.num(setting(M, 'BARISTA_DOEL')) || null;
   var start = setting(M, 'STARTVERMOGEN') != null ? C.num(setting(M, 'STARTVERMOGEN')) : (b ? b.waarde : 0) + (buf ? buf.saldo : 0);
   var inleg = setting(M, 'INLEG') != null ? C.num(setting(M, 'INLEG')) : f.reduce(function (a, x) { return a + x.gespaard; }, 0) / n;
   var r = setting(M, 'RENDEMENT') != null ? C.num(setting(M, 'RENDEMENT')) / 100 : 0.05, gj = C.num(setting(M, 'GEBOORTEJAAR')) || null;
-  return { doel: doel, voorlopig: voorlopig, start: start, inleg: inleg, r: r, gj: gj, exp: exp, startAuto: setting(M, 'STARTVERMOGEN') == null, inlegAuto: setting(M, 'INLEG') == null };
+  return { doel: doel, barista: barista, voorlopig: voorlopig, start: start, inleg: inleg, r: r, gj: gj, exp: exp, startAuto: setting(M, 'STARTVERMOGEN') == null, inlegAuto: setting(M, 'INLEG') == null };
 }
+/* Twee doelen: Barista FIRE (deeltijds werken dekt de rest) en volledige FIRE */
 R.fire = function (M, size) {
   var e = needOwn(M); if (e) return { title: 'FIRE', body: empty(e) };
-  var F = fireModel(M), res = C.fire(F.start, F.inleg, F.r, F.doel, 60), more = C.fire(F.start, F.inleg + 100, F.r, F.doel, 60);
-  var nowY = +M.dq.lastComplete.slice(0, 4), when = function (j) { return j == null ? null : nowY + j; };
-  var age = function (j) { return F.gj && j != null ? when(j) - F.gj : null; };
-  var title = res.jaren == null ? 'Aan dit tempo haal je je FIRE-doel niet binnen 60 jaar' : 'Aan dit tempo bereik je je FIRE-doel ' + (age(res.jaren) != null ? 'op je ' + age(res.jaren) : 'in ' + when(res.jaren)) + ' (over ' + res.jaren + ' jaar)';
-  var yrs = Math.min(60, (res.jaren || 40) + 5), ser = res.reeks.slice(0, yrs + 1), mx = Math.max(F.doel, ser[ser.length - 1].v);
+  var F = fireModel(M), full = C.fire(F.start, F.inleg, F.r, F.doel, 60), bar = F.barista ? C.fire(F.start, F.inleg, F.r, F.barista, 60) : null;
+  var more = C.fire(F.start, F.inleg + 100, F.r, F.doel, 60);
+  var nowY = +M.dq.lastComplete.slice(0, 4);
+  var at = function (j) { return j == null ? 'niet binnen 60 jaar' : F.gj ? 'op je ' + (nowY + j - F.gj) : 'in ' + (nowY + j); };
+  var wie = J(M, 'je', 'jullie');
+  var title = full.jaren == null && !(bar && bar.jaren != null) ? 'Aan dit tempo haal' + (M.view === 'SAMEN' ? ' jullie' : ' je') + ' FIRE niet binnen 60 jaar'
+    : bar ? 'Barista FIRE ' + at(bar.jaren) + ', volledige FIRE ' + at(full.jaren) : 'Aan dit tempo bereik' + (M.view === 'SAMEN' ? ' jullie' : ' je') + ' FIRE ' + at(full.jaren) + ' (over ' + full.jaren + ' jaar)';
+  var yrs = Math.min(60, (full.jaren || 45) + 4), ser = full.reeks.slice(0, yrs + 1), mx = Math.max(F.doel, ser[ser.length - 1].v);
   var ax = axis(0, mx), Y = ax.Y, X = function (i) { return i / (ser.length - 1) * 100; };
   var d = ser.map(function (s, i) { return (i ? 'L' : 'M') + X(i).toFixed(2) + ',' + Y(s.v).toFixed(2); }).join(' ');
+  var goal = function (v, c) { return '<line x1="0" x2="100" y1="' + Y(v).toFixed(2) + '" y2="' + Y(v).toFixed(2) + '" stroke="' + c + '" stroke-width="2" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>'; };
   var svg = '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' + ax.grid +
     '<path d="' + d + ' L100,' + Y(0).toFixed(2) + ' L0,' + Y(0).toFixed(2) + ' Z" fill="var(--accent)" fill-opacity=".12"/><path d="' + d + '" fill="none" stroke="var(--accent)" stroke-width="2.75" vector-effect="non-scaling-stroke"/>' +
-    '<line x1="0" x2="100" y1="' + Y(F.doel).toFixed(2) + '" y2="' + Y(F.doel).toFixed(2) + '" stroke="var(--pos)" stroke-width="2" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/></svg>';
-  var hitDot = res.jaren != null && res.jaren <= yrs ? '<i class="pt a" style="left:' + X(res.jaren) + '%;top:' + Y(F.doel) + '%"></i>' : '';
+    goal(F.doel, 'var(--pos)') + (F.barista ? goal(F.barista, 'var(--muted)') : '') + '</svg>';
+  var dot = function (res, v) { return res && res.jaren != null && res.jaren <= yrs ? '<i class="pt a" style="left:' + X(res.jaren) + '%;top:' + Y(v) + '%"></i>' : ''; };
   var lab = []; for (var i = 0; i < ser.length; i += Math.max(1, Math.round(ser.length / 6))) lab.push('<span style="left:' + X(i) + '%">' + (F.gj ? (nowY + i - F.gj) + ' j' : nowY + i) + '</span>');
-  var chart = '<div class="chart"><div class="lines">' + ax.labels + '<div class="lplot">' + svg + hitDot + '<span class="gl2" style="top:' + Y(F.doel) + '%">FIRE-doel ' + eur(F.doel) + '</span></div><div class="xa">' + lab.join('') + '</div></div></div>';
-  var gain = res.jaren != null && more.jaren != null ? res.jaren - more.jaren : null;
-  var side = '<div class="hb"><ul class="hl"><li>Doel<b>' + eur(F.doel) + '</b></li><li>Nu<b>' + eur(F.start) + '</b></li><li>Inleg per maand<b>' + eur(F.inleg) + '</b></li><li>Rendement<b>' + pct(F.r, 1) + '</b></li></ul>' +
-    (gain ? '<p class="nt" style="margin-top:12px">€100 meer per maand: <b>' + gain + ' jaar</b> vroeger.</p>' : '') + (F.voorlopig ? '<p class="nt">Voorlopig doel: 25 × je jaaruitgaven (' + eur(F.exp * 12) + ').</p>' : '') + '</div>';
+  var chart = '<div class="chart"><div class="lines">' + ax.labels + '<div class="lplot">' + svg + dot(full, F.doel) + dot(bar, F.barista) +
+    '<span class="gl2" style="top:' + Y(F.doel) + '%">Volledige FIRE ' + kEur(F.doel) + '</span>' + (F.barista ? '<span class="gl2 mu" style="top:' + Y(F.barista) + '%">Barista FIRE ' + kEur(F.barista) + '</span>' : '') + '</div><div class="xa">' + lab.join('') + '</div></div></div>';
+  var gain = full.jaren != null && more.jaren != null ? full.jaren - more.jaren : null;
+  var side = '<div class="hb"><ul class="hl">' + (F.barista ? '<li>Barista FIRE<b>' + kEur(F.barista) + '</b></li>' : '') + '<li>Volledige FIRE<b>' + kEur(F.doel) + '</b></li><li class="mu">Nu<b>' + eur(F.start) + '</b></li><li>Inleg per maand<b>' + eur(F.inleg) + '</b></li><li>Rendement<b>' + pct(F.r, 1) + '</b></li></ul>' +
+    (gain ? '<p class="nt" style="margin-top:12px">€100 meer per maand: <b>' + gain + ' jaar</b> vroeger volledige FIRE.</p>' : '') + (F.voorlopig ? '<p class="nt">Voorlopig doel: 25 × ' + wie + ' jaaruitgaven (' + eur(F.exp * 12) + ').</p>' : '') + '</div>';
   return { title: title, cls: 'hero', body: side + '<div class="hc">' + chart + '</div>' };
 };
 R.fireinst = function (M, size) {
   var e = needOwn(M); if (e) return { title: 'FIRE-instellingen', body: empty(e) };
   var F = fireModel(M);
   var chip = function (l, v, auto) { return '<span><b>' + v + '</b> ' + l + (auto ? ' <small>(automatisch)</small>' : '') + '</span>'; };
-  return { title: 'Aannames' + (F.voorlopig ? ': vul je FIRE-bedrag in zodra je adviseur het heeft' : ''), body: '<div class="pkh"><div class="chips">' + chip('FIRE-doel', eur(F.doel), F.voorlopig) + chip('nu belegd en op rekening', eur(F.start), F.startAuto) + chip('inleg per maand', eur(F.inleg), F.inlegAuto) + chip('rendement na inflatie', pct(F.r, 1), setting(M, 'RENDEMENT') == null) + chip('geboortejaar', F.gj || '–', false) + '</div><button class="btn sm2" data-act="fire">Aanpassen</button></div>' };
+  return { title: 'Aannames' + (F.voorlopig ? ': vul het FIRE-bedrag in van je adviseur' : ''), body: '<div class="pkh"><div class="chips">' + (F.barista ? chip('Barista FIRE', kEur(F.barista), false) : '') + chip('volledige FIRE', kEur(F.doel), F.voorlopig) + chip('nu belegd en op rekening', eur(F.start), F.startAuto) + chip('inleg per maand', eur(F.inleg), F.inlegAuto) + chip('rendement na inflatie', pct(F.r, 1), setting(M, 'RENDEMENT') == null) + chip('geboortejaar', F.gj || '–', false) + '</div><button class="btn sm2" data-act="fire">Aanpassen</button></div>' };
 };
 
 /* Volledige lijst voor "Toon alle" */

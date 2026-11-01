@@ -134,7 +134,7 @@ const V3 = (v, p) => L.defaults(v, p);
   ok('standaard ' + v + ' ' + p.id + ' vult 4x4', cells === 16 && L.clean(d, v).length === d.length, cells);
 }));
 ok('MATS en SOFIE zelfde pagina\'s', JSON.stringify(L.pages('MATS').map(p => V3('MATS', p.id))) === JSON.stringify(L.pages('SOFIE').map(p => V3('SOFIE', p.id))));
-ok('pagina Samen enkel bij SAMEN, FIRE enkel per persoon', L.pages('MATS').length === 6 && L.pages('SAMEN').length === 6 && !L.pages('SAMEN').some(p => p.id === 'fire'));
+ok('pagina Samen enkel bij SAMEN, FIRE overal', L.pages('MATS').length === 6 && L.pages('SAMEN').length === 7 && L.pages('SAMEN').some(p => p.id === 'fire'));
 ok('gedeelde indeling opgeschoond, geen dubbels over pagina\'s', JSON.stringify(L.fromShared({ v: 4, 'MATS:overzicht': [{ id: 'auto', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], 'MATS:vast': [{ id: 'auto', size: 'S' }, { id: 'buffer', size: 'S' }] })) === '{"MATS:overzicht":[{"id":"auto","size":"L"}],"MATS:vast":[{"id":"buffer","size":"S"}]}');
 ok('oude gedeelde indeling genegeerd', JSON.stringify(L.fromShared({ MATS: [{ id: 'auto', size: 'L' }] })) === '{}');
 ok('eerlijkheid enkel bij SAMEN', !L.allowed('eerlijkheid', 'MATS') && L.allowed('eerlijkheid', 'SAMEN'));

@@ -362,11 +362,11 @@ function pocketAction(a, t) {
 }
 
 /* ---------- FIRE-instellingen ---------- */
-var FIRE_KEYS = [['GEBOORTEJAAR', 'Geboortejaar', 'bv. 1995', ''], ['FIRE_DOEL', 'FIRE-bedrag (doel)', 'leeg = 25 × je jaaruitgaven', '€'], ['RENDEMENT', 'Verwacht rendement na inflatie, % per jaar', '5', '%'],
+var FIRE_KEYS = [['GEBOORTEJAAR', 'Geboortejaar (bij Samen: van de oudste)', 'bv. 1995', ''], ['BARISTA_DOEL', 'Totaal vermogen nodig voor Barista FIRE', 'bv. 1370000', '€'], ['FIRE_DOEL', 'Totaal vermogen nodig voor volledige FIRE', 'leeg = 25 × je jaaruitgaven', '€'], ['RENDEMENT', 'Verwacht rendement na inflatie, % per jaar', '5', '%'],
   ['STARTVERMOGEN', 'Vermogen nu (spaarrekening + beleggingen + rekeningen)', 'leeg = ETF\'s + zichtrekening', '€'], ['INLEG', 'Inleg per maand', 'leeg = je gemiddelde spaarbedrag', '€']];
 function fireEditor() {
   var get = function (k) { var r = S.data.instellingen.filter(function (x) { return x.Sleutel === S.view + '.' + k; })[0]; return r ? r.Waarde : ''; };
-  openSheet('FIRE-aannames voor ' + { MATS: 'Mats', SOFIE: 'Sofie' }[S.view], '<div class="fe">' + FIRE_KEYS.map(function (k) {
+  openSheet('FIRE-aannames voor ' + { MATS: 'Mats', SOFIE: 'Sofie', SAMEN: 'Samen' }[S.view], '<div class="fe">' + FIRE_KEYS.map(function (k) {
     return '<label>' + k[1] + '<input data-fk="' + k[0] + '" value="' + esc(get(k[0])) + '" placeholder="' + esc(k[2]) + '" inputmode="decimal"></label>';
   }).join('') + '<p class="nt">Alles in euro van vandaag. Rendement na inflatie: 4 tot 5% is een gangbare aanname voor een wereldwijde ETF.</p><p class="err" id="feerr" role="alert"></p><button class="btn pri" data-act="firesave">Bewaar</button></div>');
 }
