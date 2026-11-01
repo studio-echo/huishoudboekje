@@ -147,7 +147,7 @@ function needOwn(M) {
 
 /* ---------- nieuwe grafieken ---------- */
 /* Twee lijnen (inkomen en uitgaven) met het verschil ertussen groen of rood. Elke maand is een knop. */
-function lines(ser, opts) {
+var lines = function (ser, opts) {
   var n = ser.length; if (n < 2) return '';
   var mx = 1; ser.forEach(function (s) { mx = Math.max(mx, s.a, s.b); });
   var X = function (i) { return (i + 0.5) / n * 100; }, Y = function (v) { return 6 + (1 - v / mx) * 88; };
@@ -186,20 +186,6 @@ function fitList(rows, id, cls) {
 /* ---------- catalogus ---------- */
 var R = {};
 
-R.verloop = function (M, size) {
-  var e = needOwn(M); if (e) return { title: 'Inkomen en uitgaven', body: empty(e) };
-  var m = M.m, res = m.resultaat, cash = m.inkomen + m.uitgaven;
-  var title = res >= 0 ? J(M, 'Je', 'Jullie') + ' hield' + (M.view === 'SAMEN' ? 'en' : '') + ' ' + eur(res) + ' over ' + M.when
-    : cash < 0 ? J(M, 'Je gaf', 'Jullie gaven') + ' ' + eurAbs(cash) + ' meer uit dan er binnenkwam'
-    : 'Na sparen kwam' + J(M, ' je', 'en jullie') + ' ' + eurAbs(res) + ' tekort';
-  if (size === 'S') return { title: title, body: kpi('na sparen', eur(res), 'zonder eenmalig ' + signed(m.structureel)) };
-  var ser = M.full().map(function (x) { return { m: x.m, a: x.inkomen, b: -x.uitgaven, sel: x.m >= M.P.from && x.m <= M.P.to }; });
-  var side = '<div class="hb"><div class="big">' + hero(res) + '</div><div class="hs">over na sparen' + (M.P.n > 1 ? ', ' + eur(res / M.P.n) + ' per maand' : '') + '</div>' +
-    '<ul class="hl"><li><i class="sw a"></i>Inkomen<b>' + eur(m.inkomen) + '</b></li><li><i class="sw dash"></i>Uitgaven<b>' + eur(-m.uitgaven) + '</b></li><li><i class="sw"></i>Gespaard<b>' + eur(m.gespaard) + '</b></li>' +
-    (Math.abs(m.eenmalig) >= 0.5 ? '<li class="mu">Zonder eenmalig<b class="' + (m.structureel >= 0 ? 'pos' : 'neg') + '">' + signed(m.structureel) + '</b></li>' : '') + '</ul></div>';
-  return { title: title, cls: 'hero', body: side + '<div class="hc">' + lines(ser) + '</div>' };
-};
-
 function kpiWidget(key, label, goed, needIncome) {
   return function (M, size) {
     if (needIncome) { var e = needOwn(M); if (e) return { title: label, body: empty(e) }; }
@@ -218,41 +204,6 @@ R.uitgaven = kpiWidget('uitgaven', 'Uitgaven', false, false);
 R.gespaard = kpiWidget('gespaard', 'Gespaard', true, true);
 
 /* Aan dit tempo: gemiddeld opzij (gespaard + overgehouden) per volledige maand x 12 */
-R.prognose = function (M, size) {
-  var e = needOwn(M); if (e) return { title: 'Jaarprognose', body: empty(e) };
-  var f = M.full(), n = f.length; if (!n) return { title: 'Jaarprognose', body: empty('Nog geen volledige maand.') };
-  var sum = function (k) { return f.reduce(function (a, x) { return a + x[k]; }, 0); };
-  var opzij = (sum('gespaard') + sum('resultaat')) / n, struct = (sum('gespaard') + sum('structureel')) / n;
-  var title = opzij >= 0 ? 'Aan dit tempo ' + J(M, 'zet je', 'zetten jullie') + ' ' + eur(opzij * 12) + ' per jaar opzij' : 'Aan dit tempo ' + J(M, 'ga je', 'gaan jullie') + ' ' + eurAbs(opzij * 12) + ' per jaar achteruit';
-  var sp = mShort(M.V[0]) + '–' + mShort(M.V[n - 1]);
-  if (size === 'S') return { title: title, body: kpi('per jaar, gespaard + over', eur(opzij * 12), 'gem. ' + eur(opzij) + ' per maand') };
-  return { title: title, body: '<div class="stats">' +
-    '<div><b>' + eur(opzij * 12) + '</b><span>netto per jaar</span></div>' +
-    '<div><b>' + eur(sum('gespaard') / n * 12) + '</b><span>naar sparen</span></div>' +
-    '<div><b>' + eur(struct * 12) + '</b><span>zonder eenmalig</span></div></div>' +
-    '<div class="cap">Gespaard plus overgehouden, gemiddeld ' + eur(opzij) + ' per maand (' + sp + ')</div>' };
-};
-
-/* Wat er deze maand nog vrij is: verwacht inkomen min vaste kosten, spaardoel en wat al los uitgegeven is */
-R.nogvrij = function (M, size) {
-  var e = needOwn(M); if (e) return { title: 'Nog vrij deze maand', body: empty(e) };
-  var ms = M.st.Months, m = ms[ms.length - 1];
-  if (M.dq.partialMonths.indexOf(m) < 0) return { title: 'Geen lopende maand', body: empty('Zodra er boekingen van een nieuwe maand zijn, zie je hier wat er nog vrij is.') };
-  var rows = C.inPeriod(M.all, m, m), keys = M.recKeys(), got = C.metrics(rows).inkomen;
-  var prev3 = C.byMonth(M.all, C.range(C.addM(M.dq.lastComplete, -2), M.dq.lastComplete), true), avgInc = avg(prev3, 'inkomenStructureel') || 0;
-  var inc = Math.max(got, avgInc), fixed = M.rec().filter(function (r) { return r.loopt; }).reduce(function (a, r) { return a + r.perMaand; }, 0);
-  var save = CFG.SPAARDOEL * inc, spent = 0;
-  rows.forEach(function (x) { if (x.t === 'uitgave' && !keys[C.counterparty(x.r)]) spent -= x.a; });
-  var budget = inc - fixed - save, free = budget - spent;
-  var lastD = M.dq.maxLast && M.dq.maxLast.slice(0, 7) === m ? +M.dq.maxLast.slice(8) : 0;
-  var days = Math.max(1, new Date(Date.UTC(+m.slice(0, 4), +m.slice(5), 0)).getUTCDate() - lastD);
-  var title = free >= 0 ? 'Nog ' + eur(free) + ' vrij tot eind ' + mLong(m) + ', ' + eur(free / days) + ' per dag' : J(M, 'Je zit', 'Jullie zitten') + ' ' + eurAbs(free) + ' boven ' + J(M, 'je', 'jullie') + ' ritme voor ' + mLong(m);
-  var p = budget > 0 ? Math.min(1, spent / budget) : 1;
-  return { title: title, body: '<div class="goal"><div class="gbar"><i style="width:' + (p * 100).toFixed(1) + '%' + (free < 0 ? ';background:var(--neg)' : '') + '"></i></div>' +
-    '<div class="gl"><span>' + eur(spent) + ' los uitgegeven</span><span>van ' + eur(Math.max(0, budget)) + (size !== 'S' ? ' · nog ' + days + ' dagen' : '') + '</span></div></div>' +
-    (size === 'L' ? '<div class="cap">Inkomen ' + eur(inc) + ' min vaste kosten ' + eur(fixed) + ' en spaardoel ' + eur(save) + '. Boekingen tot ' + dNice(M.dq.maxLast) + '.</div>' : '') };
-};
-
 R.spaarratio = function (M, size) {
   var e = needOwn(M); if (e) return { title: 'Spaarratio', body: empty(e) };
   var r = M.m.spaarratio, t = CFG.SPAARDOEL, s = CFG.SPAARDOEL_STRETCH;
@@ -274,16 +225,6 @@ R.maandverloop = function (M, size) {
 };
 
 /* Opzij gezet: gespaard + overgehouden, opgeteld over de volledige maanden */
-R.opgebouwd = function (M, size) {
-  var e = needOwn(M); if (e) return { title: 'Opzij gezet', body: empty(e) };
-  var cum = 0, cs = 0, f = M.full(), vals = f.map(function (x) { cum += x.resultaat + x.gespaard; cs += x.gespaard; return cum; });
-  var title = cum >= 0 ? 'Sinds ' + mLong(M.V[0]) + ' ' + J(M, 'zette je', 'zetten jullie') + ' ' + eur(cum) + ' opzij' : 'Sinds ' + mLong(M.V[0]) + ' ' + J(M, 'ging je', 'gingen jullie') + ' ' + eurAbs(cum) + ' achteruit';
-  if (size === 'S') return { title: title, body: kpi('gespaard + overgehouden', eur(cum)) };
-  return { title: title, cls: 'hero', body: '<div class="hb"><div class="big">' + hero(cum) + '</div><ul class="hl"><li><i class="sw"></i>Gespaard<b>' + eur(cs) + '</b></li><li><i class="sw a"></i>Overgehouden<b>' + eur(cum - cs) + '</b></li><li class="mu">Gemiddeld per maand<b>' + eur(cum / (f.length || 1)) + '</b></li></ul></div>' +
-    '<div class="hc">' + area(vals, { labels: f.map(function (x) { return mShort(x.m); }) }) + '</div>' };
-};
-
-/* Categorieen met potje of 'gewoonlijk' als streepje: zie meteen wat ontspoort */
 function catModel(M) {
   var cats = C.byCategory(M.rows), n = M.P.n, cur = {}, tot = 0;
   cats.forEach(function (c) { cur[c.cat] = c.bedrag / n; tot += c.bedrag; });
@@ -291,7 +232,7 @@ function catModel(M) {
   if (usualMs.length < 2) usualMs = M.V.slice(-3);
   var usual = {};
   C.byCategory(C.inPeriod(usualRows, usualMs[0], usualMs[usualMs.length - 1])).forEach(function (c) { usual[c.cat] = c.bedrag / usualMs.length; });
-  var pk = C.pockets(M.ctx, M.view, M.rows, n, [], 1), covered = {}, items = [];
+  var pk = { voorstel: true, list: [] }, covered = {}, items = [];
   if (!pk.voorstel) pk.list.forEach(function (p) {
     p.cats.forEach(function (c) { covered[c] = 1; });
     items.push({ naam: p.naam, cats: p.cats, v: p.uitgegeven, ref: p.budget, pot: true });
@@ -343,7 +284,8 @@ R.vastelasten = function (M, size) {
   if (!run.length) return { title: 'Nog geen vaste kosten herkend', body: empty('Vaste kosten verschijnen zodra dezelfde partij minstens 3 maanden terugkomt.') };
   var tot = run.reduce(function (a, r) { return a + r.perMaand; }, 0), up = run.filter(function (r) { return r.stijging; });
   var inc = avg(M.full(), 'inkomenStructureel');
-  var title = eur(tot) + ' per maand ligt vast' + (inc > 0 ? ', ' + pct(tot / inc, 0) + ' van ' + J(M, 'je', 'jullie') + ' inkomen' : '');
+  var big = run.slice().sort(function (a, b) { return b.perMaand - a.perMaand; })[0];
+  var title = up.length ? up.length + (up.length > 1 ? ' vaste kosten werden' : ' vaste kost werd') + ' duurder' : big.naam + ' is ' + J(M, 'je', 'jullie') + ' grootste vaste kost';
   var subs = run.filter(function (r) { return r.abonnement; }).reduce(function (a, r) { return a + r.perMaand; }, 0), loans = run.filter(function (r) { return r.lening; }).reduce(function (a, r) { return a + r.perMaand; }, 0);
   return { title: title, body: '<div class="chips"><span><b>' + eur(loans) + '</b> leningen</span><span><b>' + eur(subs) + '</b> abonnementen</span><span><b>' + eur(tot - loans - subs) + '</b> andere</span>' +
     (up.length ? '<span class="neg"><b>' + up.length + '</b> duurder</span>' : '') + '</div>' +
@@ -363,24 +305,6 @@ function signals(M) {
   M.rows.forEach(function (x) { if (x.t === 'uitgave' && x.r.Eenmalig && -x.a >= 50) o.push({ w: -x.a * 0.5, t: C.cleanName(x.r.Tegenpartij || x.r.Omschrijving), s: 'eenmalig · ' + dNice(x.r.Datum) + ' · ' + x.r.Categorie, v: eur(-x.a) }); });
   return o.sort(function (a, b) { return b.w - a.w; });
 }
-R.opvallend = function (M, size) {
-  var mode = M.st.wstate.opvallend || 'signalen';
-  var tg = toggle('opvallend', [['signalen', 'Signalen'], ['grootste', 'Grootste'], ['winkels', 'Winkels']], mode);
-  if (mode === 'winkels') {
-    var tp = C.topCounterparties(loose(M), 1000);
-    if (!tp.length) return { title: 'Geen uitgaven ' + M.when, body: tg + empty('Geen uitgaven.') };
-    return { title: J(M, 'Je gaf', 'Jullie gaven') + ' het meest uit bij ' + tp[0].naam, body: tg + fitList(tp.map(function (b) { return { t: b.naam, s: b.aantal + (b.aantal > 1 ? ' betalingen' : ' betaling'), v: eur(b.bedrag), dd: 'cp:' + encodeURIComponent(b.key) }; }), 'opvallend') };
-  }
-  if (mode === 'grootste') {
-    var big = C.largest(loose(M), 1000);
-    if (!big.length) return { title: 'Geen uitgaven ' + M.when, body: tg + empty('Geen uitgaven.') };
-    return { title: J(M, 'Je', 'Jullie') + ' grootste uitgave: ' + big[0].naam + ' (' + eur(big[0].bedrag) + ')', body: tg + fitList(big.map(function (b) { return { t: b.naam, s: dNice(b.datum) + ' · ' + b.cat + (b.eenmalig ? ' · eenmalig' : ''), v: eur(b.bedrag) }; }), 'opvallend') };
-  }
-  var sg = signals(M);
-  if (!sg.length) return { title: 'Niets ongewoons ' + M.when, body: tg + empty('Geen categorie wijkt sterk af, niets werd duurder en er waren geen grote eenmalige uitgaven.') };
-  return { title: sg.length === 1 ? '1 ding springt eruit ' + M.when : sg.length + ' dingen springen eruit ' + M.when, body: tg + fitList(sg, 'opvallend') };
-};
-
 R.gemiddelde = function (M, size) {
   var f = M.full(), n = f.length;
   if (!n) return { title: 'Gemiddelde per maand', body: empty('Nog geen volledige maand.') };
@@ -402,6 +326,13 @@ R.buffer = function (M, size) {
 };
 
 R.spaardoel = function (M, size) {
+  if (M.view === 'SAMEN') {
+    var rr = ['MATS', 'SOFIE'].map(function (p) { var m = C.metrics(C.inPeriod(C.rowsFor(M.ctx, p), M.P.from, M.P.to)); return { p: p, g: m.gespaard, t: CFG.SPAARDOEL * m.inkomenStructureel }; });
+    var hit = rr.filter(function (x) { return x.t > 0 && x.g >= x.t; }).length;
+    return { title: hit === 2 ? 'Allebei jullie spaardoel gehaald' : hit === 1 ? (rr[0].g >= rr[0].t ? 'Mats' : 'Sofie') + ' haalde het spaardoel' : 'Geen van beiden haalde het spaardoel', body: '<div class="goal">' + rr.map(function (x) {
+      return '<div class="gl"><span>' + (x.p === 'MATS' ? 'Mats' : 'Sofie') + ' ' + eur(x.g) + '</span><span>doel ' + eur(x.t) + '</span></div><div class="gbar thin"><i style="width:' + Math.min(100, x.t ? x.g / x.t * 100 : 0).toFixed(1) + '%;background:var(--' + x.p.toLowerCase() + ')"></i></div>';
+    }).join('') + '</div>' };
+  }
   var e = needOwn(M); if (e) return { title: 'Spaardoel', body: empty(e) };
   var inc = M.m.inkomenStructureel, g = M.m.gespaard, t = CFG.SPAARDOEL * inc, s = CFG.SPAARDOEL_STRETCH * inc;
   if (inc <= 0) return { title: 'Geen vast inkomen ' + M.when, body: empty('Het spaardoel is ' + pct(CFG.SPAARDOEL, 0) + ' van het vaste inkomen.') };
@@ -483,58 +414,6 @@ R.vastvrij = function (M, size) {
   return { title: title, body: stacked(ser) + '<div class="lgd"><button class="lk" data-dd="vast:1"><i class="sw a"></i>Vast ' + eur(v / M.P.n) + '</button><button class="lk" data-dd="vast:0"><i class="sw b"></i>Vrij ' + eur(f / M.P.n) + '</button>' + (M.P.n > 1 ? '<span>per maand</span>' : '') + '</div>' + rit };
 };
 
-R.regel = function (M, size) {
-  var e = needOwn(M); if (e) return { title: '50/30/20-regel', body: empty(e) };
-  var r = C.rule503020(M.ctx, M.rows), inc = r.inkomen;
-  if (inc <= 0) return { title: 'Geen inkomen ' + M.when, body: empty('De regel vergelijkt met je inkomen.') };
-  var parts = [['nodig', 'Nodig', r.nodig, 0.5], ['wens', 'Wensen', r.wens, 0.3], ['sparen', 'Sparen en over', r.sparen, 0.2]];
-  var worst = parts.slice().sort(function (a, b) { return Math.abs(b[2] / inc - b[3]) - Math.abs(a[2] / inc - a[3]); })[0];
-  var off = worst[2] / inc - worst[3];
-  var title = Math.abs(off) < 0.05 ? J(M, 'Je zit', 'Jullie zitten') + ' dicht bij de 50/30/20-regel'
-    : worst[1] + ' ' + (worst[0] === 'sparen' ? 'is' : 'nemen') + ' ' + pct(Math.max(0, worst[2]) / inc, 0) + ' van ' + J(M, 'je', 'jullie') + ' inkomen, doel ' + pct(worst[3], 0);
-  return { title: title, body: '<div class="rule">' + parts.map(function (p) {
-    var x = Math.max(0, p[2] / inc), good = p[0] === 'sparen' ? x >= p[3] : x <= p[3] + 0.02;
-    var inner = '<span class="rh"><b>' + p[1] + '</b><span class="' + (good ? '' : 'neg') + '">' + pct(x, 0) + ' <small>doel ' + pct(p[3], 0) + '</small></span></span>' +
-      '<span class="rb"><i style="width:' + Math.min(100, x * 100).toFixed(1) + '%' + (good ? '' : ';background:var(--neg)') + '"></i><b style="left:' + (p[3] * 100) + '%"></b></span>';
-    return p[0] === 'sparen' ? '<div class="rr">' + inner + '</div>' : '<button class="rr lrow" data-dd="need:' + p[0] + '">' + inner + '</button>';
-  }).join('') + '</div>' + (size === 'L' ? note('Nodig: wonen, boodschappen, vervoer, gezondheid, administratie. De rest telt als wens. Pas dit aan met een kolom Soort in Categorieen.') : '') };
-};
-
-R.auto = function (M, size) {
-  var lc = M.dq.lastComplete, rows = C.inPeriod(M.all, M.V[0], lc), n = M.V.length, c = C.carCosts(rows);
-  var who = M.view === 'SOFIE' ? 'Sofie' : M.view === 'MATS' ? 'Mats' : 'jullie';
-  if (c.totaal < 0.5) return { title: 'Wat kost de auto', body: empty('Geen tankbeurten, garage of parking gevonden voor ' + who + '.') };
-  var pm = c.totaal / n, py = pm * 12, pd = py / 365, mx = 0;
-  var soorten = Object.keys(c.perSoort).filter(function (k) { return c.perSoort[k] > 0.5; }).sort(function (a, b) { return c.perSoort[b] - c.perSoort[a]; });
-  soorten.forEach(function (k) { mx = Math.max(mx, c.perSoort[k]); });
-  var miss = !(c.perSoort['Verzekering en taks'] > 0.5);
-  var head = '<div class="stats"><div><b>' + eur(py) + '</b><span>per jaar</span></div><div><b>' + eur(pm) + '</b><span>per maand</span></div><div><b>' + (pd < 0.5 ? '< €1' : nf2.format(pd)) + '</b><span>per dag</span></div></div>';
-  if (size === 'S') return { title: 'De auto kost ' + who + ' ' + eur(pm) + ' per maand', body: head };
-  return { title: 'De auto kost ' + who + ' ongeveer ' + eur(py) + ' per jaar', body: head +
-    fitList(soorten.map(function (k) { return { t: k, s: pct(c.perSoort[k] / c.totaal, 0) + ' van de autokosten', v: eur(c.perSoort[k] / n) + ' <small>/mnd</small>', bar: c.perSoort[k] / mx, dd: 'car:' + encodeURIComponent(k) }; }), 'auto') +
-    note((miss ? 'Geen verzekering of verkeersbelasting gevonden: betaald via een andere rekening? ' : '') + 'Herkend op naam, ' + mShort(M.V[0]) + '–' + mShort(lc) + '.') };
-};
-
-R.beleggingen = function (M, size) {
-  var b = C.investments(M.ctx, M.view);
-  if (!b) {
-    /* zonder tabblad: wat er volgens de rekeningen naar sparen en beleggen ging */
-    var g = {}, tot = 0;
-    C.inPeriod(M.all, M.V[0], M.dq.lastComplete).forEach(function (x) { if (x.t !== 'sparen') return; var k = C.cleanName(x.r.Tegenpartij || x.r.Omschrijving); g[k] = (g[k] || 0) - x.a; tot -= x.a; });
-    var ks = Object.keys(g).filter(function (k) { return Math.abs(g[k]) >= 0.5; }).sort(function (a, b) { return g[b] - g[a]; });
-    if (!ks.length) return { title: 'Beleggingen', body: empty('Nog geen tabblad Beleggingen in het blad. Zie de gids voor de kolommen.') };
-    return { title: eur(tot) + ' ging naar sparen en beleggen sinds ' + mLong(M.V[0]), body: '<div class="kpi kx"><div class="kv">' + eur(tot) + '</div><div class="kl">ingelegd volgens ' + J(M, 'je', 'jullie') + ' rekeningen</div></div>' +
-      fitList(ks.map(function (k) { return { t: k, v: eur(g[k]), bar: g[k] / g[ks[0]] }; }), 'beleggingen') + note('Voeg een tabblad Beleggingen toe om ook de waarde en het rendement te zien.') };
-  }
-  var up = b.winst >= 0;
-  var title = J(M, 'Je', 'Jullie') + ' ETF\'s zijn ' + eur(b.waarde) + ' waard' + (b.rendement != null ? ', ' + (up ? '+' : '−') + pct(Math.abs(b.rendement), 0) : '');
-  var k = '<div class="kpi kx"><div class="kv">' + eur(b.waarde) + '</div><div class="kl"><span class="' + (up ? 'pos' : 'neg') + '">' + (up ? '▲ ' : '▼ ') + signed(b.winst) + '</span> op ' + eur(b.ingelegd) + ' ingelegd</div></div>';
-  var hv = b.hist.map(function (x) { return x.v; });
-  if (size === 'S') return { title: title, body: k + mini(hv, hv.length ? [hv.length - 1] : []) };
-  return { title: title, body: '<div class="rw">' + k + (hv.length > 1 ? '<div class="spk">' + area(hv) + '</div>' : '') + '</div>' +
-    fitList(b.list.map(function (e) { var w = e.waarde - e.ingelegd; return { t: e.etf, s: (e.aantal ? (Math.round(e.aantal * 100) / 100) + ' stuks · ' : '') + 'ingelegd ' + eur(e.ingelegd), v: eur(e.waarde) + ' <small class="' + (w >= 0 ? 'pos' : 'neg') + '">' + signed(w) + '</small>' }; }), 'beleggingen') };
-};
-
 /* ---------- doorklikken ---------- */
 function txRow(x) { return { t: C.cleanName(x.r.Tegenpartij || x.r.Omschrijving), s: dNice(x.r.Datum) + ' · ' + x.r.Categorie + (x.r.Eenmalig ? ' · eenmalig' : ''), v: eur(-x.a) }; }
 function drill(M, spec) {
@@ -545,6 +424,7 @@ function drill(M, spec) {
   else if (type === 'freq') { keys = M.freq().keys; title = FREQ.filter(function (f) { return f[0] === key; })[0][1]; rows = rows.filter(exp(function (x) { return (keys[C.counterparty(x.r) || '?'] || 'los') === key; })); }
   else if (type === 'vast') { keys = M.freq().keys; title = key === '1' ? 'Vaste uitgaven' : 'Vrije uitgaven'; rows = rows.filter(exp(function (x) { var k = keys[C.counterparty(x.r) || '?']; return (k && k !== 'los') === (key === '1'); })); }
   else if (type === 'need') { title = key === 'nodig' ? 'Nodig' : 'Wensen'; rows = rows.filter(exp(function (x) { return C.needKind(M.ctx, x.r.Categorie) === key; })); }
+  else if (type === 'ftype') { title = key; sub = 'van ' + mShort(M.V[0]) + ' tot ' + mShort(M.dq.lastComplete); var tk = {}; M.rec().forEach(function (r) { if (r.loopt && C.fixedType(r) === key) tk[r.key] = 1; }); rows = C.inPeriod(M.all, M.V[0], M.dq.lastComplete).filter(exp(function (x) { return tk[C.counterparty(x.r)]; })); }
   else if (type === 'car') { title = key; sub = 'van ' + mShort(M.V[0]) + ' tot ' + mShort(M.dq.lastComplete); rows = C.inPeriod(M.all, M.V[0], M.dq.lastComplete).filter(exp(function (x) { return C.carKind(x.r) === key; })); }
   else if (type === 'cp') { title = key; sub = 'van ' + mShort(M.V[0]) + ' tot ' + mShort(M.dq.lastComplete); rows = C.inPeriod(M.all, M.V[0], M.dq.lastComplete).filter(exp(function (x) { return C.counterparty(x.r) === key; })); if (rows[0]) title = C.cleanName(rows[0].r.Tegenpartij || rows[0].r.Omschrijving); }
   else return null;
@@ -552,7 +432,7 @@ function drill(M, spec) {
   var tot = rows.reduce(function (a, x) { return a - x.a; }, 0);
   /* per maand over alle maanden, zodat je ziet of het normaal is */
   var pm = {};
-  var base = type === 'car' || type === 'cp' ? rows : M.all.filter(exp(function (x) {
+  var base = type === 'car' || type === 'cp' || type === 'ftype' ? rows : M.all.filter(exp(function (x) {
     if (type === 'cat') return x.r.Categorie === key;
     if (type === 'cats') return key.split('|').indexOf(x.r.Categorie) >= 0;
     if (type === 'need') return C.needKind(M.ctx, x.r.Categorie) === key;
@@ -569,14 +449,295 @@ function drill(M, spec) {
     (rows.length ? '<ul class="list">' + rows.map(txRow).map(row).join('') + '</ul>' : empty('Geen betalingen in deze periode.')) };
 }
 
+/* ================= v4: assen, netto, uitgaven, pockets, vaste kosten, sparen, FIRE ================= */
+/* Mooie schaalverdeling: 3 tot 5 streepjes, ronde bedragen */
+function ticks(mn, mx) {
+  if (mx <= mn) mx = mn + 1;
+  var raw = (mx - mn) / 4, p = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), f = raw / p;
+  var step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p, o = [];
+  for (var v = Math.floor(mn / step) * step; v < mx + step * 0.999; v += step) o.push(Math.round(v * 100) / 100);
+  return o;
+}
+function kEur(v) { var a = Math.abs(v); if (a >= 1e6) return (v < 0 ? '−' : '') + '€' + (a / 1e6).toFixed(a % 1e6 ? 1 : 0).replace('.', ',') + 'M'; return (v < 0 ? '−' : '') + '€' + (a >= 1000 ? (a / 1000).toFixed(a % 1000 && a < 10000 ? 1 : 0).replace('.', ',') + 'k' : Math.round(a)); }
+/* Assenkruis: geeft { Y, grid (svg), labels (html) } voor waarden tussen mn en mx (0 altijd in beeld) */
+function axis(mn, mx, fmt) {
+  var t = ticks(Math.min(0, mn), Math.max(0, mx)), lo = t[0], hi = t[t.length - 1];
+  var Y = function (v) { return 2 + (hi - v) / (hi - lo) * 96; };
+  return { Y: Y, lo: lo, hi: hi,
+    grid: t.map(function (v) { return '<line x1="0" x2="100" y1="' + Y(v).toFixed(2) + '" y2="' + Y(v).toFixed(2) + '" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"' + (v === 0 ? '' : ' stroke-dasharray="2 4"') + '/>'; }).join(''),
+    labels: '<div class="ya">' + t.map(function (v) { return '<span style="top:' + Y(v).toFixed(2) + '%">' + (fmt || kEur)(v) + '</span>'; }).join('') + '</div>' };
+}
+
+/* Twee lijnen met y-as. ser: {m, a, b, sel} */
+lines = function (ser) {
+  var n = ser.length; if (n < 2) return '';
+  var mx = 1; ser.forEach(function (s) { mx = Math.max(mx, s.a, s.b); });
+  var ax = axis(0, mx), Y = ax.Y, X = function (i) { return (i + 0.5) / n * 100; };
+  var pa = ser.map(function (s, i) { return X(i).toFixed(2) + ',' + Y(s.a).toFixed(2); }), pb = ser.map(function (s, i) { return X(i).toFixed(2) + ',' + Y(s.b).toFixed(2); });
+  var x0 = X(0).toFixed(2), x1 = X(n - 1).toFixed(2), id = 'ln' + (++gid);
+  var under = function (p) { return 'M' + p.join(' L') + ' L' + x1 + ',100 L' + x0 + ',100 Z'; }, above = function (p) { return 'M' + p.join(' L') + ' L' + x1 + ',0 L' + x0 + ',0 Z'; };
+  var sel = ser.map(function (s, i) { return s.sel ? i : -1; }).filter(function (i) { return i >= 0; });
+  var band = sel.length ? '<rect x="' + (X(sel[0]) - 50 / n).toFixed(2) + '" width="' + (sel.length * 100 / n).toFixed(2) + '" y="0" height="100" fill="var(--card2)"/>' : '';
+  var svg = '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="' + id + 'a"><path d="' + above(pb) + '"/></clipPath><clipPath id="' + id + 'b"><path d="' + above(pa) + '"/></clipPath></defs>' + band + ax.grid +
+    '<path d="' + under(pa) + '" fill="var(--pos)" fill-opacity=".16" clip-path="url(#' + id + 'a)"/><path d="' + under(pb) + '" fill="var(--neg)" fill-opacity=".16" clip-path="url(#' + id + 'b)"/>' +
+    '<path d="M' + pb.join(' L') + '" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>' +
+    '<path d="M' + pa.join(' L') + '" fill="none" stroke="var(--accent)" stroke-width="2.75" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+  var dots = sel.map(function (i) { return '<i class="pt a" style="left:' + X(i) + '%;top:' + Y(ser[i].a) + '%"></i><i class="pt b" style="left:' + X(i) + '%;top:' + Y(ser[i].b) + '%"></i>'; }).join('');
+  var cols = ser.map(function (s) { return '<button class="lc' + (s.sel ? ' sel' : '') + '" data-month="' + s.m + '" aria-label="' + esc(mLong(s.m, true) + ': inkomen ' + eur(s.a) + ', uitgaven ' + eur(s.b)) + '"' + (s.sel ? ' aria-current="true"' : '') + '><span>' + esc(mShort(s.m)) + '</span></button>'; }).join('');
+  return '<div class="chart"><div class="lines">' + ax.labels.replace('class="ya"', 'class="ya"') + '<div class="lplot">' + svg + dots + '</div><div class="lcols">' + cols + '</div></div></div>';
+};
+/* Staven met y-as; groups: per maand een lijst {v, c, l}. Optionele doellijn. */
+function vbars(ms, groups, goal, opts) {
+  var mx = goal || 0; groups.forEach(function (g) { g.forEach(function (b) { mx = Math.max(mx, b.v); }); });
+  var mn = 0; groups.forEach(function (g) { g.forEach(function (b) { mn = Math.min(mn, b.v); }); });
+  var ax = axis(mn, mx), Y = ax.Y;
+  var svg = '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' + ax.grid + (goal ? '<line x1="0" x2="100" y1="' + Y(goal).toFixed(2) + '" y2="' + Y(goal).toFixed(2) + '" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>' : '') + '</svg>';
+  var cols = ms.map(function (m, i) {
+    var g = groups[i];
+    return '<button class="vc' + (opts.sel && opts.sel(m) ? ' sel' : '') + '" data-month="' + m + '" aria-label="' + esc(mLong(m, true) + ': ' + g.map(function (b) { return (b.l ? b.l + ' ' : '') + eur(b.v); }).join(', ')) + '">' +
+      '<span class="vb">' + g.map(function (b) { var top = Y(Math.max(0, b.v)), bot = Y(Math.min(0, b.v)); return '<i style="top:' + top.toFixed(2) + '%;height:' + Math.max(0.6, bot - top).toFixed(2) + '%;background:' + b.c + '"></i>'; }).join('') + '</span><span class="cl">' + mShort(m) + '</span></button>';
+  }).join('');
+  return '<div class="chart">' + ax.labels + '<div class="vplot">' + svg + '<div class="vcols">' + cols + '</div></div></div>';
+}
+/* Donut met klikbare stukken (data-dd) */
+var PAL = ['var(--accent)', 'color-mix(in srgb,var(--accent) 72%,var(--card))', 'color-mix(in srgb,var(--accent) 52%,var(--card))', 'color-mix(in srgb,var(--accent) 36%,var(--card))', 'color-mix(in srgb,var(--accent) 24%,var(--card))', 'color-mix(in srgb,var(--accent) 15%,var(--card))', 'color-mix(in srgb,var(--muted) 30%,var(--card))'];
+function pie(items, centre, sub) {
+  var tot = items.reduce(function (a, b) { return a + b.v; }, 0) || 1, R0 = 36, Cc = 2 * Math.PI * R0, off = 0;
+  var g = items.map(function (it, i) {
+    var l = it.v / tot * Cc, s = '<circle class="sl" cx="50" cy="50" r="' + R0 + '" fill="none" stroke="' + it.c + '" stroke-width="20" stroke-dasharray="' + Math.max(0, l - 0.8).toFixed(2) + ' ' + Cc.toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 50 50)"' + (it.dd ? ' data-dd="' + esc(it.dd) + '"' : '') + '><title>' + esc(it.l + ' ' + eur(it.v)) + '</title></circle>';
+    off += l; return s;
+  }).join('');
+  return '<svg class="pie" viewBox="0 0 100 100" role="img" aria-label="' + esc(items.map(function (i) { return i.l + ' ' + eur(i.v); }).join(', ')) + '">' + g +
+    '<text x="50" y="50" text-anchor="middle" class="dc">' + esc(centre) + '</text><text x="50" y="61" text-anchor="middle" class="ds">' + esc(sub || '') + '</text></svg>';
+}
+function pieLegend(items, tot) {
+  return '<ul class="list lg pl">' + items.map(function (p) {
+    var inner = '<span class="ln"><i class="sw" style="background:' + p.c + '"></i><span class="lt">' + esc(p.l) + '</span></span><span class="lv">' + eur(p.v) + ' <small>' + pct(p.v / (tot || 1), 0) + '</small></span>';
+    return '<li>' + (p.dd ? '<button class="lrow" data-dd="' + esc(p.dd) + '">' + inner + '</button>' : inner) + '</li>';
+  }).join('') + '</ul>';
+}
+function topItems(list, k, dd) {
+  var tot = list.reduce(function (a, c) { return a + c.v; }, 0), top = list.slice(0, k), rest = list.slice(k).reduce(function (a, c) { return a + c.v; }, 0);
+  var items = top.map(function (c, i) { return { l: c.l, v: c.v, c: PAL[i], dd: dd ? dd(c) : null }; });
+  if (rest >= 0.5) items.push({ l: 'Andere', v: rest, c: PAL[6], dd: dd && list.slice(k).length ? 'cats:' + encodeURIComponent(list.slice(k).map(function (c) { return c.l; }).join('|')) : null });
+  return { items: items, tot: tot };
+}
+
+/* ---------- Overzicht ---------- */
+R.verloop = function (M, size) {
+  var e = needOwn(M); if (e) return { title: 'Inkomen en uitgaven', body: empty(e) };
+  var m = M.m, net = m.inkomen + m.uitgaven, g = m.gespaard;
+  var title = net >= 0 ? J(M, 'Je', 'Jullie') + ' hield' + (M.view === 'SAMEN' ? 'en' : '') + ' ' + eur(net) + ' over ' + M.when : J(M, 'Je gaf', 'Jullie gaven') + ' ' + eurAbs(net) + ' meer uit dan er binnenkwam ' + M.when;
+  if (size === 'S') return { title: title, body: kpi('inkomen min uitgaven', eur(net), g > 0.5 ? 'waarvan ' + eur(g) + ' naar sparen' : '') };
+  var ser = M.full().map(function (x) { return { m: x.m, a: x.inkomen, b: -x.uitgaven, sel: x.m >= M.P.from && x.m <= M.P.to }; });
+  var side = '<div class="hb"><div class="big">' + hero(net) + '</div><div class="hs">inkomen min uitgaven' + (M.P.n > 1 ? ', ' + eur(net / M.P.n) + ' per maand' : '') + '</div>' +
+    '<ul class="hl"><li><i class="sw a"></i>Inkomen<b>' + eur(m.inkomen) + '</b></li><li><i class="sw dash"></i>Uitgaven<b>' + eur(-m.uitgaven) + '</b></li>' +
+    '<li class="mu">Naar sparen<b>' + eur(g) + '</b></li><li>Bleef op rekening<b class="' + (net - g >= 0 ? '' : 'neg') + '">' + eur(net - g) + '</b></li></ul></div>';
+  return { title: title, cls: 'hero', body: side + '<div class="hc">' + lines(ser) + '</div>' };
+};
+R.prognose = function (M, size) {
+  var e = needOwn(M); if (e) return { title: 'Jaarprognose', body: empty(e) };
+  var f = M.full(), n = f.length; if (!n) return { title: 'Jaarprognose', body: empty('Nog geen volledige maand.') };
+  var sum = function (k) { return f.reduce(function (a, x) { return a + x[k]; }, 0); };
+  var net = (sum('inkomen') + sum('uitgaven')) / n, sp = sum('gespaard') / n, once = f.reduce(function (a, x) { return a + x.eenmalig; }, 0) / n;
+  var title = net >= 0 ? 'Aan dit tempo ' + J(M, 'hou je', 'houden jullie') + ' ' + eur(net * 12) + ' per jaar over' : 'Aan dit tempo ' + J(M, 'geef je', 'geven jullie') + ' ' + eurAbs(net * 12) + ' per jaar meer uit dan er binnenkomt';
+  return { title: title, body: '<div class="stats"><div><b>' + eur(net * 12) + '</b><span>over per jaar</span></div><div><b>' + eur(sp * 12) + '</b><span>naar sparen</span></div>' +
+    (size !== 'S' ? '<div><b>' + eur((net - once) * 12) + '</b><span>zonder eenmalig</span></div>' : '') + '</div><div class="cap">Gemiddelde van ' + mShort(M.V[0]) + '–' + mShort(M.V[n - 1]) + ' × 12</div>' };
+};
+R.veranderingen = function (M, size) {
+  var sg = signals(M);
+  if (!sg.length) return { title: 'Niets ongewoons ' + M.when, body: empty('Geen categorie wijkt sterk af en niets werd duurder.') };
+  return { title: sg.length === 1 ? '1 ding veranderde ' + M.when : sg.length + ' dingen veranderden ' + M.when, body: fitList(sg, 'veranderingen') };
+};
+
+/* ---------- Uitgaven ---------- */
+R.donut = function (M, size) {
+  var cats = C.byCategory(M.rows).map(function (c) { return { l: c.cat, v: c.bedrag / M.P.n }; });
+  if (!cats.length) return { title: 'Geen uitgaven ' + M.when, body: empty('Geen uitgaven in deze periode.') };
+  var t = topItems(cats, size === 'S' ? 4 : 6, function (c) { return 'cat:' + encodeURIComponent(c.l); });
+  var top = cats[0];
+  return { title: top.l + ' is ' + pct(top.v / t.tot, 0) + ' van ' + J(M, 'je', 'jullie') + ' uitgaven ' + M.when,
+    body: '<div class="dw">' + pie(t.items, eur(t.tot), M.P.n > 1 ? 'per maand' : 'uitgegeven') + (size === 'S' ? '' : pieLegend(t.items, t.tot)) + '</div>' };
+};
+R.winkels = function (M, size) {
+  var tp = C.topCounterparties(loose(M), 1000);
+  if (!tp.length) return { title: 'Geen uitgaven ' + M.when, body: empty('Geen uitgaven.') };
+  var mx = tp[0].bedrag;
+  return { title: 'Meest uitgegeven bij ' + tp[0].naam, body: fitList(tp.map(function (b) { return { t: b.naam, s: b.aantal + (b.aantal > 1 ? ' betalingen' : ' betaling'), v: eur(b.bedrag), bar: b.bedrag / mx, dd: 'cp:' + encodeURIComponent(b.key) }; }), 'winkels') };
+};
+R.eenmalig = function (M, size) {
+  var big = C.largest(loose(M), 1000);
+  if (!big.length) return { title: 'Geen uitgaven ' + M.when, body: empty('Geen uitgaven.') };
+  return { title: 'Grootste: ' + big[0].naam + ' (' + eur(big[0].bedrag) + ')', body: fitList(big.map(function (b) { return { t: b.naam, s: dNice(b.datum) + ' · ' + b.cat + (b.eenmalig ? ' · eenmalig' : ''), v: eur(b.bedrag) }; }), 'eenmalig') };
+};
+
+/* ---------- Pockets ---------- */
+function ringSmall(p, over) {
+  var R0 = 40, Cc = 2 * Math.PI * R0, v = Math.min(1, p);
+  return '<svg class="pring" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="' + R0 + '" fill="none" stroke="var(--track)" stroke-width="12"/>' +
+    '<circle cx="50" cy="50" r="' + R0 + '" fill="none" stroke="' + (over ? 'var(--neg)' : 'var(--accent)') + '" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + (v * Cc).toFixed(2) + ' ' + Cc.toFixed(2) + '" transform="rotate(-90 50 50)"/>' +
+    '<text x="50" y="57" text-anchor="middle" class="rt">' + Math.round(p * 100) + '%</text></svg>';
+}
+R.pockets = function (M, size) {
+  var ps = C.pockets(M.ctx, M.view, M.rows, M.P.n);
+  var btn = '<button class="btn sm2" data-act="pockets">' + (ps.length ? 'Pockets aanpassen' : 'Pockets instellen') + '</button>';
+  if (!ps.length) return { title: 'Nog geen pockets voor ' + (M.view === 'SAMEN' ? 'Samen' : M.view === 'MATS' ? 'Mats' : 'Sofie'), body: '<div class="empty col"><p>Een pocket is een budget per maand voor een of meer categorieën, zoals Boodschappen €400 of Uit eten €150. Je ziet dan elke maand of je binnen blijft.</p>' + btn + '</div>' };
+  var ok = ps.filter(function (p) { return p.uitgegeven <= p.budget + 0.5; }).length, cov = {}, outside = 0, tb = 0, tu = 0;
+  ps.forEach(function (p) { p.cats.forEach(function (c) { cov[c] = 1; }); tb += p.budget; tu += p.uitgegeven; });
+  M.rows.forEach(function (x) { if (x.t === 'uitgave' && !cov[x.r.Categorie]) outside -= x.a; });
+  var cards = ps.map(function (p) {
+    var r = p.budget ? p.uitgegeven / p.budget : 0, over = p.uitgegeven > p.budget + 0.5, left = p.budget - p.uitgegeven;
+    return '<button class="pk' + (over ? ' over' : '') + '" data-dd="cats:' + encodeURIComponent(p.cats.join('|')) + '">' + ringSmall(r, over) +
+      '<span class="pkt"><b>' + esc(p.naam) + '</b><span>' + eur(p.uitgegeven) + ' van ' + eur(p.budget) + '</span><span class="' + (over ? 'neg' : 'pos') + '">' + (over ? eurAbs(left) + ' over budget' : 'nog ' + eur(left)) + '</span></span></button>';
+  }).join('');
+  /* per maand: alles in pockets samen tegenover het totale budget */
+  var hist = M.V.map(function (m) { var s = 0; M.all.forEach(function (x) { if (x.m === m && x.t === 'uitgave' && cov[x.r.Categorie]) s -= x.a; }); return [{ v: s, c: s > tb + 0.5 ? 'var(--neg)' : 'var(--accent)' }]; });
+  var chart = size !== 'S' ? '<div class="pkc">' + vbars(M.V, hist, tb, { sel: function (m) { return m >= M.P.from && m <= M.P.to; } }) + '<div class="lgd"><span><i class="sw a"></i>Uitgegeven in pockets per maand</span><span><i class="dl"></i>Totaal budget ' + eur(tb) + '</span></div></div>' : '';
+  return { title: ok + ' van ' + ps.length + ' pockets binnen budget ' + M.when, body: '<div class="pkh"><span>' + eur(tu) + ' van ' + eur(tb) + (M.P.n > 1 ? ' per maand' : '') + ' · buiten pockets ' + eur(outside / M.P.n) + '</span>' + btn + '</div><div class="pks">' + cards + '</div>' + chart };
+};
+R.regel = function (M, size) {
+  var e = needOwn(M); if (e) return { title: '50/30/20-regel', body: empty(e) };
+  var r = C.rule503020(M.ctx, M.rows), inc = r.inkomen;
+  if (inc <= 0) return { title: 'Geen inkomen ' + M.when, body: empty('De regel vergelijkt met je inkomen.') };
+  var parts = [['nodig', 'Nodig', r.nodig, 0.5], ['wens', 'Wensen', r.wens, 0.3], ['sparen', 'Sparen en over', r.sparen, 0.2]];
+  var worst = parts.slice().sort(function (a, b) { return Math.abs(b[2] / inc - b[3]) - Math.abs(a[2] / inc - a[3]); })[0], off = worst[2] / inc - worst[3];
+  var title = Math.abs(off) < 0.05 ? '50/30/20: ' + J(M, 'je zit', 'jullie zitten') + ' er dicht bij' : '50/30/20: ' + worst[1].toLowerCase() + ' ' + pct(Math.max(0, worst[2]) / inc, 0) + ' van ' + J(M, 'je', 'jullie') + ' inkomen, richtlijn ' + pct(worst[3], 0);
+  return { title: title, body: '<div class="rule row">' + parts.map(function (p) {
+    var x = Math.max(0, p[2] / inc), good = p[0] === 'sparen' ? x >= p[3] : x <= p[3] + 0.02;
+    var inner = '<span class="rh"><b>' + p[1] + '</b><span class="' + (good ? '' : 'neg') + '">' + pct(x, 0) + ' <small>richtlijn ' + pct(p[3], 0) + '</small></span></span>' +
+      '<span class="rb"><i style="width:' + Math.min(100, x * 100).toFixed(1) + '%' + (good ? '' : ';background:var(--neg)') + '"></i><b style="left:' + (p[3] * 100) + '%"></b></span>';
+    return p[0] === 'sparen' ? '<div class="rr">' + inner + '</div>' : '<button class="rr lrow" data-dd="need:' + p[0] + '">' + inner + '</button>';
+  }).join('') + '</div>' };
+};
+
+/* ---------- Vaste kosten ---------- */
+function fixedRun(M) { return M.rec().filter(function (r) { return r.loopt; }); }
+R.vastsoort = function (M, size) {
+  var run = fixedRun(M);
+  if (!run.length) return { title: 'Nog geen vaste kosten herkend', body: empty('Vaste kosten verschijnen zodra dezelfde partij minstens 3 maanden terugkomt.') };
+  var by = {}; run.forEach(function (r) { var t = C.fixedType(r); by[t] = (by[t] || 0) + r.perMaand; });
+  var list = Object.keys(by).map(function (k) { return { l: k, v: by[k] }; }).sort(function (a, b) { return b.v - a.v; });
+  var t = topItems(list, 6, function (c) { return 'ftype:' + encodeURIComponent(c.l); }), inc = avg(M.full(), 'inkomenStructureel');
+  return { title: eur(t.tot) + ' per maand ligt vast' + (inc > 0 ? ', ' + pct(t.tot / inc, 0) + ' van ' + J(M, 'je', 'jullie') + ' inkomen' : ''),
+    body: '<div class="dw">' + pie(t.items, eur(t.tot), 'per maand') + (size === 'S' ? '' : pieLegend(t.items, t.tot)) + '</div>' };
+};
+R.komend = function (M, size) {
+  var up = C.upcoming(C.inPeriod(M.all, M.V[0], M.dq.lastComplete), M.freq().keys, M.dq.lastComplete).filter(function (o) { return o.bedrag >= 20; });
+  if (!up.length) return { title: 'Geen kwartaal- of jaarbetalingen herkend', body: empty('Betalingen die om de 3 of 12 maanden terugkomen, verschijnen hier met de maand waarin ze verwacht worden.') };
+  return { title: 'Volgende: ' + up[0].naam + ' in ' + mLong(up[0].volgende) + ' (' + eur(up[0].bedrag) + ')', body: fitList(up.map(function (o) { return { t: o.naam, s: (o.kind === 'kwartaal' ? 'per kwartaal' : 'per jaar') + ' · verwacht ' + mShort(o.volgende) + ' ' + o.volgende.slice(0, 4), v: eur(o.bedrag), dd: 'cp:' + encodeURIComponent(o.key) }; }), 'komend') };
+};
+
+R.auto = function (M, size) {
+  var lc = M.dq.lastComplete, rows = C.inPeriod(M.all, M.V[0], lc), n = M.V.length, c = C.carCosts(rows);
+  var who = M.view === 'SOFIE' ? 'Sofie' : M.view === 'MATS' ? 'Mats' : 'jullie';
+  if (c.totaal < 0.5) return { title: 'Wat kost de auto', body: empty('Geen tankbeurten, garage of parking gevonden voor ' + who + '.') };
+  var pm = c.totaal / n, py = pm * 12, pd = py / 365, mx = 0;
+  var soorten = Object.keys(c.perSoort).filter(function (k) { return c.perSoort[k] > 0.5; }).sort(function (a, b) { return c.perSoort[b] - c.perSoort[a]; });
+  soorten.forEach(function (k) { mx = Math.max(mx, c.perSoort[k]); });
+  var miss = !(c.perSoort['Verzekering en taks'] > 0.5);
+  var head = '<div class="stats"><div><b>' + eur(pm) + '</b><span>per maand</span></div><div><b>' + (pd < 0.5 ? '< €1' : nf2.format(pd)) + '</b><span>per dag</span></div>' + (size !== 'S' ? '<div><b>' + eur(py) + '</b><span>per jaar</span></div>' : '') + '</div>';
+  return { title: 'De auto kost ' + who + ' ongeveer ' + eur(py) + ' per jaar', body: head +
+    fitList(soorten.map(function (k) { return { t: k, s: pct(c.perSoort[k] / c.totaal, 0) + ' van de autokosten', v: eur(c.perSoort[k] / n) + ' <small>/mnd</small>', bar: c.perSoort[k] / mx, dd: 'car:' + encodeURIComponent(k) }; }), 'auto') +
+    (size !== 'S' || miss ? note((miss ? 'Geen verzekering of verkeersbelasting gevonden.' : '') + (size !== 'S' ? ' Herkend op naam, ' + mShort(M.V[0]) + '–' + mShort(lc) + '.' : '')) : '') };
+};
+
+/* ---------- Sparen ---------- */
+function perPerson(M, fn) { return ['MATS', 'SOFIE'].map(function (p) { var all = C.rowsFor(M.ctx, p); return fn(p, all, C.byMonth(all, M.V)); }); }
+R.spaarverloop = function (M, size) {
+  var V = M.V, sel = function (m) { return m >= M.P.from && m <= M.P.to; };
+  if (M.view === 'SAMEN') {
+    var pp = perPerson(M, function (p, all, f) { return { p: p, f: f, avg: avg(f, 'gespaard') || 0 }; });
+    var groups = V.map(function (m, i) { return [{ v: pp[0].f[i].gespaard, c: 'var(--mats)', l: 'Mats' }, { v: pp[1].f[i].gespaard, c: 'var(--sofie)', l: 'Sofie' }]; });
+    return { title: 'Gemiddeld per maand: Mats spaarde ' + eur(pp[0].avg) + ', Sofie ' + eur(pp[1].avg), body: vbars(V, groups, 0, { sel: sel }) + '<div class="lgd"><span><i class="sw" style="background:var(--mats)"></i>Mats</span><span><i class="sw" style="background:var(--sofie)"></i>Sofie</span><span>Jullie sparen elk apart</span></div>' };
+  }
+  var e = needOwn(M); if (e) return { title: 'Gespaard per maand', body: empty(e) };
+  var f = M.full(), a = avg(f, 'gespaard') || 0, inc = avg(f, 'inkomenStructureel') || 0, goal = CFG.SPAARDOEL * inc;
+  var hit = f.filter(function (x) { return x.gespaard >= CFG.SPAARDOEL * x.inkomenStructureel - 0.5; }).length;
+  return { title: 'Je spaarde gemiddeld ' + eur(a) + ' per maand, doel gehaald in ' + hit + ' van ' + f.length + ' maanden',
+    body: vbars(V, f.map(function (x) { return [{ v: x.gespaard, c: 'var(--accent)' }]; }), goal, { sel: sel }) + '<div class="lgd"><span><i class="sw a"></i>Naar sparen en beleggen</span><span><i class="dl"></i>Doel ' + pct(CFG.SPAARDOEL, 0) + ' van je inkomen (' + eur(goal) + ')</span></div>' };
+};
+R.beleggingen = function (M, size) {
+  var b = C.investments(M.ctx, M.view);
+  if (!b) {
+    var g = {}, tot = 0;
+    C.inPeriod(M.all, M.V[0], M.dq.lastComplete).forEach(function (x) { if (x.t !== 'sparen') return; var k = C.cleanName(x.r.Tegenpartij || x.r.Omschrijving); g[k] = (g[k] || 0) - x.a; tot -= x.a; });
+    var ks = Object.keys(g).filter(function (k) { return Math.abs(g[k]) >= 0.5; }).sort(function (a, b) { return g[b] - g[a]; });
+    if (!ks.length) return { title: 'Beleggingen', body: empty('Nog geen beleggingen in het tabblad Beleggingen en geen overschrijvingen naar sparen.') };
+    return { title: 'Geen ETF\'s; ' + eur(tot) + ' ging naar sparen sinds ' + mLong(M.V[0]), body: fitList(ks.map(function (k) { return { t: k, s: 'naar sparen', v: eur(g[k]), bar: g[k] / g[ks[0]] }; }), 'beleggingen') + note('Beleggingen verschijnen hier zodra ze in het tabblad Beleggingen staan.') };
+  }
+  var up = b.winst >= 0;
+  var title = (M.view === 'SAMEN' ? 'Jullie' : 'Je') + ' ETF\'s zijn ' + eur(b.waarde) + ' waard, ' + (up ? '+' : '−') + pct(Math.abs(b.rendement || 0), 1) + ' rendement';
+  var k = '<div class="kpi kx"><div class="kv">' + eur(b.waarde) + '</div><div class="kl"><span class="' + (up ? 'pos' : 'neg') + '">' + (up ? '▲ ' : '▼ ') + signed(b.winst) + '</span> op ' + eur(b.ingelegd) + ' ingelegd · ' + dNice(b.datum) + '</div></div>';
+  if (size === 'S') return { title: title, body: k };
+  var short = function (s) { return String(s).replace(/\b(UCITS|ETF|USD|EUR|ACC|ACCUMULATION|ACCUMULATING|DIST|A)\b/gi, '').replace(/\s+/g, ' ').trim().toLowerCase().replace(/\b\w/g, function (c) { return c.toUpperCase(); }); };
+  var mxv = Math.max.apply(null, b.list.map(function (e) { return e.waarde; }).concat(1));
+  return { title: title, body: k + (b.hist.length > 1 ? '<div class="spk">' + area(b.hist.map(function (x) { return x.v; })) + '</div>' : '') +
+    fitList(b.list.map(function (e) { var w = e.waarde - e.ingelegd; return { t: short(e.naam), s: e.aantal + ' stuks · ingelegd ' + eur(e.ingelegd) + (M.view === 'SAMEN' ? ' · ' + (e.wie === 'MATS' ? 'Mats' : e.wie === 'SOFIE' ? 'Sofie' : 'samen') : ''), v: eur(e.waarde) + ' <small class="' + (w >= 0 ? 'pos' : 'neg') + '">' + signed(w) + '</small>', bar: e.waarde / mxv }; }), 'beleggingen') +
+    (b.hist.length < 2 ? note('Het verloop verschijnt zodra er een tweede maand in het tabblad staat.') : '') };
+};
+R.opzij = function (M, size) {
+  var one = function (p) { var f = C.byMonth(C.rowsFor(M.ctx, p), M.V), b = C.investments(M.ctx, p); return { sp: f.reduce(function (a, x) { return a + x.gespaard; }, 0), etf: b ? b.waarde : 0 }; };
+  if (M.view === 'SAMEN') {
+    var a = one('MATS'), s = one('SOFIE');
+    return { title: 'Sinds ' + mLong(M.V[0]) + ' naar sparen: Mats ' + eur(a.sp) + ', Sofie ' + eur(s.sp), body: '<div class="stats"><div><b class="cm">' + eur(a.sp) + '</b><span>Mats gespaard</span></div><div><b class="cs">' + eur(s.sp) + '</b><span>Sofie gespaard</span></div></div>' };
+  }
+  var o = one(M.view);
+  return { title: 'Sinds ' + mLong(M.V[0]) + ' ging ' + eur(o.sp) + ' naar sparen en beleggen', body: '<div class="stats"><div><b>' + eur(o.sp) + '</b><span>naar sparen en beleggen</span></div>' + (o.etf ? '<div><b>' + eur(o.etf) + '</b><span>ETF-waarde nu</span></div>' : '') + '<div><b>' + eur(o.sp / M.V.length) + '</b><span>per maand</span></div></div>' };
+};
+
+/* ---------- FIRE ---------- */
+function setting(M, k) {
+  var r = (M.ctx.data.instellingen || []).filter(function (x) { return String(x.Sleutel) === M.view + '.' + k; })[0];
+  return r && String(r.Waarde).trim() !== '' ? r.Waarde : null;
+}
+function fireModel(M) {
+  var f = M.full(), n = f.length || 1, b = C.investments(M.ctx, M.view), buf = C.buffer(M.ctx, M.view, M.dq.lastComplete, 3);
+  var exp = -f.reduce(function (a, x) { return a + x.uitgaven; }, 0) / n;
+  var doel = C.num(setting(M, 'FIRE_DOEL')), voorlopig = !doel; if (!doel) doel = 25 * exp * 12;
+  var start = setting(M, 'STARTVERMOGEN') != null ? C.num(setting(M, 'STARTVERMOGEN')) : (b ? b.waarde : 0) + (buf ? buf.saldo : 0);
+  var inleg = setting(M, 'INLEG') != null ? C.num(setting(M, 'INLEG')) : f.reduce(function (a, x) { return a + x.gespaard; }, 0) / n;
+  var r = setting(M, 'RENDEMENT') != null ? C.num(setting(M, 'RENDEMENT')) / 100 : 0.05, gj = C.num(setting(M, 'GEBOORTEJAAR')) || null;
+  return { doel: doel, voorlopig: voorlopig, start: start, inleg: inleg, r: r, gj: gj, exp: exp, startAuto: setting(M, 'STARTVERMOGEN') == null, inlegAuto: setting(M, 'INLEG') == null };
+}
+R.fire = function (M, size) {
+  var e = needOwn(M); if (e) return { title: 'FIRE', body: empty(e) };
+  var F = fireModel(M), res = C.fire(F.start, F.inleg, F.r, F.doel, 60), more = C.fire(F.start, F.inleg + 100, F.r, F.doel, 60);
+  var nowY = +M.dq.lastComplete.slice(0, 4), when = function (j) { return j == null ? null : nowY + j; };
+  var age = function (j) { return F.gj && j != null ? when(j) - F.gj : null; };
+  var title = res.jaren == null ? 'Aan dit tempo haal je je FIRE-doel niet binnen 60 jaar' : 'Aan dit tempo bereik je je FIRE-doel ' + (age(res.jaren) != null ? 'op je ' + age(res.jaren) : 'in ' + when(res.jaren)) + ' (over ' + res.jaren + ' jaar)';
+  var yrs = Math.min(60, (res.jaren || 40) + 5), ser = res.reeks.slice(0, yrs + 1), mx = Math.max(F.doel, ser[ser.length - 1].v);
+  var ax = axis(0, mx), Y = ax.Y, X = function (i) { return i / (ser.length - 1) * 100; };
+  var d = ser.map(function (s, i) { return (i ? 'L' : 'M') + X(i).toFixed(2) + ',' + Y(s.v).toFixed(2); }).join(' ');
+  var svg = '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' + ax.grid +
+    '<path d="' + d + ' L100,' + Y(0).toFixed(2) + ' L0,' + Y(0).toFixed(2) + ' Z" fill="var(--accent)" fill-opacity=".12"/><path d="' + d + '" fill="none" stroke="var(--accent)" stroke-width="2.75" vector-effect="non-scaling-stroke"/>' +
+    '<line x1="0" x2="100" y1="' + Y(F.doel).toFixed(2) + '" y2="' + Y(F.doel).toFixed(2) + '" stroke="var(--pos)" stroke-width="2" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/></svg>';
+  var hitDot = res.jaren != null && res.jaren <= yrs ? '<i class="pt a" style="left:' + X(res.jaren) + '%;top:' + Y(F.doel) + '%"></i>' : '';
+  var lab = []; for (var i = 0; i < ser.length; i += Math.max(1, Math.round(ser.length / 6))) lab.push('<span style="left:' + X(i) + '%">' + (F.gj ? (nowY + i - F.gj) + ' j' : nowY + i) + '</span>');
+  var chart = '<div class="chart"><div class="lines">' + ax.labels + '<div class="lplot">' + svg + hitDot + '<span class="gl2" style="top:' + Y(F.doel) + '%">FIRE-doel ' + eur(F.doel) + '</span></div><div class="xa">' + lab.join('') + '</div></div></div>';
+  var gain = res.jaren != null && more.jaren != null ? res.jaren - more.jaren : null;
+  var side = '<div class="hb"><ul class="hl"><li>Doel<b>' + eur(F.doel) + '</b></li><li>Nu<b>' + eur(F.start) + '</b></li><li>Inleg per maand<b>' + eur(F.inleg) + '</b></li><li>Rendement<b>' + pct(F.r, 1) + '</b></li></ul>' +
+    (gain ? '<p class="nt" style="margin-top:12px">€100 meer per maand: <b>' + gain + ' jaar</b> vroeger.</p>' : '') + (F.voorlopig ? '<p class="nt">Voorlopig doel: 25 × je jaaruitgaven (' + eur(F.exp * 12) + ').</p>' : '') + '</div>';
+  return { title: title, cls: 'hero', body: side + '<div class="hc">' + chart + '</div>' };
+};
+R.fireinst = function (M, size) {
+  var e = needOwn(M); if (e) return { title: 'FIRE-instellingen', body: empty(e) };
+  var F = fireModel(M);
+  var chip = function (l, v, auto) { return '<span><b>' + v + '</b> ' + l + (auto ? ' <small>(automatisch)</small>' : '') + '</span>'; };
+  return { title: 'Aannames' + (F.voorlopig ? ': vul je FIRE-bedrag in zodra je adviseur het heeft' : ''), body: '<div class="pkh"><div class="chips">' + chip('FIRE-doel', eur(F.doel), F.voorlopig) + chip('nu belegd en op rekening', eur(F.start), F.startAuto) + chip('inleg per maand', eur(F.inleg), F.inlegAuto) + chip('rendement na inflatie', pct(F.r, 1), setting(M, 'RENDEMENT') == null) + chip('geboortejaar', F.gj || '–', false) + '</div><button class="btn sm2" data-act="fire">Aanpassen</button></div>' };
+};
+
 /* Volledige lijst voor "Toon alle" */
 var FULL = {
+  veranderingen: function (M) { return signals(M); },
+  winkels: function (M) { return C.topCounterparties(loose(M), 1000).map(function (b) { return { t: b.naam, s: b.aantal + (b.aantal > 1 ? ' betalingen' : ' betaling'), v: eur(b.bedrag), dd: 'cp:' + encodeURIComponent(b.key) }; }); },
+  eenmalig: function (M) { return C.largest(loose(M), 1000).map(function (b) { return { t: b.naam, s: dNice(b.datum) + ' · ' + b.cat, v: eur(b.bedrag) }; }); },
+  komend: function (M) { return C.upcoming(C.inPeriod(M.all, M.V[0], M.dq.lastComplete), M.freq().keys, M.dq.lastComplete).map(function (o) { return { t: o.naam, s: 'verwacht ' + mShort(o.volgende) + ' ' + o.volgende.slice(0, 4), v: eur(o.bedrag) }; }); },
   gedeeld: function (M) { return sharedRows(M, C.householdSplit(M.ctx, M.P.from, M.P.to)); },
   categorieen: function (M) { var c = catModel(M); return c.items.map(function (x) { return catRow(x, c.mx); }); },
   vastelasten: function (M) { return M.rec().filter(function (r) { return r.loopt; }).map(recRow); },
   auto: function (M) { var c = C.carCosts(C.inPeriod(M.all, M.V[0], M.dq.lastComplete)), n = M.V.length; return Object.keys(c.perSoort).filter(function (k) { return c.perSoort[k] > 0.5; }).map(function (k) { return { t: k, v: eur(c.perSoort[k] / n) + ' <small>/mnd</small>', dd: 'car:' + encodeURIComponent(k) }; }); },
   beleggingen: function (M) {
-    var b = C.investments(M.ctx, M.view); if (b) return b.list.map(function (e) { return { t: e.etf, s: 'ingelegd ' + eur(e.ingelegd), v: eur(e.waarde) }; });
+    var b = C.investments(M.ctx, M.view); if (b) return b.list.map(function (e) { return { t: e.naam, s: e.aantal + ' stuks · ingelegd ' + eur(e.ingelegd), v: eur(e.waarde) }; });
     return C.inPeriod(M.all, M.V[0], M.dq.lastComplete).filter(function (x) { return x.t === 'sparen'; }).sort(function (a, b) { return a.r.Datum < b.r.Datum ? 1 : -1; }).map(function (x) { return { t: C.cleanName(x.r.Tegenpartij || x.r.Omschrijving), s: dNice(x.r.Datum), v: eur(-x.a) }; });
   },
   opvallend: function (M) {
@@ -598,6 +759,6 @@ function render(id, M, size) {
   catch (e) { if (window.console) console.error(id, e); return { title: 'Deze tegel kon niet getekend worden', body: empty(e.message || String(e)) }; }
 }
 
-window.W = { render: render, model: model, full: FULL, drill: drill, dataIntro: dataIntro, rowsHtml: function (rows) { return '<ul class="list">' + rows.map(row).join('') + '</ul>'; },
+window.W = { fireModel: fireModel, render: render, model: model, full: FULL, drill: drill, dataIntro: dataIntro, rowsHtml: function (rows) { return '<ul class="list">' + rows.map(row).join('') + '</ul>'; },
   fmt: { esc: esc, eur: eur, pct: pct, mShort: mShort, mLong: mLong, dNice: dNice } };
 })();

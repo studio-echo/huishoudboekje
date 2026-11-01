@@ -43,10 +43,19 @@ Meer is er niet.
 - Tik op een rij (categorie, potje, autokost, vaste last) of op Vast en Vrij om de betalingen erachter te zien.
 
 ## D2. Optionele tabbladen
-- **Potjes**: kolommen Naam, Categorieen (met komma's), Bedrag (per maand) of Procent (van het inkomen), Wie (Mats, Sofie, Samen of leeg = iedereen). Ze verschijnen in de tegel Categorieën en potjes, met het budget als streepje. Zonder tabblad is het streepje wat je gewoonlijk uitgeeft.
-- **Beleggingen**: Datum, ETF, Soort, Bedrag, Aantal, Wie. Soort = aankoop (wat je betaalde) of waarde (wat de ETF die dag waard is, bv. overgetypt van MeDirect, één keer per maand).
-- **Categorieen**, optionele kolom **Soort**: nodig of wens, voor de 50/30/20-tegel. Leeg = standaard (wonen, boodschappen, vervoer, gezondheid en administratie zijn nodig).
-- De autotegel herkent kosten op naam (tankstation, garage, parking). Verzekering of taks die via een andere rekening loopt, ziet hij niet.
+- **Pockets**: Naam, Categorieen (met komma's), Bedrag (per maand), Wie (Mats, Sofie of Samen). Het makkelijkst stel je ze in via de pagina Pockets > **Pockets aanpassen**; het dashboard schrijft dan zelf naar dit tabblad. Een categorie hoort bij hoogstens één pocket.
+- **Beleggingen**: een momentopname per maand en per ETF, zoals de agent ze uit het MeDirect-rapport haalt: Datum, Rekening_ID (begint met MATS- of SOFIE-), Naam, ISIN, Hoeveelheid, Koers, Belegde_Waarde (wat je betaalde), Huidige_Waarde. Elke maand nieuwe rijen toevoegen; zo ontstaat het verloop.
+- **Instellingen**: Sleutel en Waarde, bv. MATS.FIRE_DOEL. Wordt ingevuld via FIRE > **Aanpassen**.
+- **Categorieen**, optionele kolom **Soort**: nodig of wens, voor de 50/30/20-tegel.
+- Het nieuwe Code.gs is nodig om pockets, instellingen en de indeling te bewaren (zie D).
+
+## D3. Pagina's
+- **Overzicht**: inkomen min uitgaven (sparen telt niet als uitgave), met waar het naartoe ging; jaarprognose; wat veranderde.
+- **Uitgaven**: donut per categorie, categorieën tegenover gewoonlijk, winkels, grootste losse uitgaven. Tik op een categorie voor alle betalingen van die periode.
+- **Pockets**: elke pocket met wat er nog over is, per maand tegenover het budget, en de 50/30/20-richtlijn.
+- **Vaste kosten**: per soort, de volledige lijst (duurder geworden in het rood), wat er per kwartaal of jaar aankomt, en de auto.
+- **Sparen**: per maand tegenover je doel, ETF's, buffer. In Samen naast elkaar, want jullie sparen apart.
+- **FIRE** (per persoon): vanaf welke leeftijd je vermogen je FIRE-doel haalt. Zonder eigen doel: 25 × je jaaruitgaven, als voorlopige schatting. Rendement na inflatie, standaard 5%.
 
 ## Later
 - Maandelijkse samenvatting door AI. Claude Pro geeft geen API-sleutel; dat vraagt een apart betaald account op console.anthropic.com.

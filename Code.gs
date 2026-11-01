@@ -6,7 +6,7 @@
 var SHEET_ID = ''; // leeg laten als dit script in het blad zelf is aangemaakt (Extensies > Apps Script)
 var TABS = { transacties: 'Transacties', rekeningen: 'Rekeningen', categorieen: 'Categorieen', saldi: 'Saldi' };
 /* Optionele tabbladen: ontbreken mag. Indeling bewaart de tegels van het dashboard (wordt door de site zelf geschreven). */
-var OPTIONAL = { potjes: 'Potjes', beleggingen: 'Beleggingen' };
+var OPTIONAL = { pockets: 'Pockets', beleggingen: 'Beleggingen', instellingen: 'Instellingen' };
 var LAYOUT_TAB = 'Indeling';
 var MAX_FAILS = 8, LOCK_SECONDS = 900;
 
@@ -33,11 +33,35 @@ function handle_(e, body) {
     var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
     var res = {};
     if (body) {
-      var txt = JSON.stringify(body.indeling || null);
-      if (txt.length > 20000) return out_({ error: 'indeling te groot' });
-      var lt = ss.getSheetByName(LAYOUT_TAB) || ss.insertSheet(LAYOUT_TAB);
-      lt.getRange('A1').setValue('Niet aanpassen: indeling van het dashboard');
-      lt.getRange('A2').setValue(txt);
+      if (body.indeling) {
+        var txt = JSON.stringify(body.indeling);
+        if (txt.length > 20000) return out_({ error: 'indeling te groot' });
+        var lt = ss.getSheetByName(LAYOUT_TAB) || ss.insertSheet(LAYOUT_TAB);
+        lt.getRange('A1').setValue('Niet aanpassen: indeling van het dashboard');
+        lt.getRange('A2').setValue(txt);
+      }
+      /* Pockets: het hele tabblad wordt vervangen door wat het dashboard stuurt */
+      if (Array.isArray(body.pockets)) {
+        if (body.pockets.length > 100) return out_({ error: 'te veel pockets' });
+        var pt = ss.getSheetByName('Pockets') || ss.insertSheet('Pockets');
+        var rows = [['Naam', 'Categorieen', 'Bedrag', 'Wie']].concat(body.pockets.map(function (p) {
+          return [String(p.Naam || '').slice(0, 60), String(p.Categorieen || '').slice(0, 500), Number(p.Bedrag) || 0, String(p.Wie || '').slice(0, 10)];
+        }));
+        pt.clearContents(); pt.getRange(1, 1, rows.length, 4).setValues(rows);
+      }
+      /* Instellingen: Sleutel / Waarde, enkel de meegestuurde sleutels worden aangepast */
+      if (body.instellingen && typeof body.instellingen === 'object') {
+        var it = ss.getSheetByName('Instellingen') || ss.insertSheet('Instellingen');
+        if (it.getLastRow() < 1) it.getRange(1, 1, 1, 2).setValues([['Sleutel', 'Waarde']]);
+        var v = it.getDataRange().getValues();
+        Object.keys(body.instellingen).slice(0, 50).forEach(function (k) {
+          if (!/^[A-Z_.]{1,40}$/.test(k)) return;
+          var val = String(body.instellingen[k]).slice(0, 40), i;
+          for (i = 1; i < v.length; i++) if (v[i][0] === k) break;
+          it.getRange(i + 1, 1, 1, 2).setValues([[k, val]]);
+          if (i === v.length) v.push([k, val]);
+        });
+      }
       return out_({ ok: true });
     }
     Object.keys(TABS).forEach(function (k) { res[k] = rows_(ss.getSheetByName(TABS[k]), TABS[k]); });

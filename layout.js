@@ -4,15 +4,17 @@
   else root.Layout = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-  var VERSION = 3, SIZES = ['S', 'M', 'L'], ROWS = 4;
+  var VERSION = 4, SIZES = ['S', 'M', 'L'], ROWS = 4;
   var ALL = ['MATS', 'SOFIE', 'SAMEN'];
 
   /* Pagina's om tussen te vegen. Elke standaardpagina vult precies 4 rijen van 4 kolommen (een iPad liggend). */
   var PAGES = [
     { id: 'overzicht', naam: 'Overzicht', views: ALL },
-    { id: 'vast', naam: 'Vaste kosten', views: ALL },
     { id: 'uitgaven', naam: 'Uitgaven', views: ALL },
+    { id: 'pockets', naam: 'Pockets', views: ALL },
+    { id: 'vast', naam: 'Vaste kosten', views: ALL },
     { id: 'sparen', naam: 'Sparen', views: ALL },
+    { id: 'fire', naam: 'FIRE', views: ['MATS', 'SOFIE'] },
     { id: 'samen', naam: 'Samen', views: ['SAMEN'] }
   ];
 
@@ -25,20 +27,27 @@
     { id: 'gespaard', naam: 'Gespaard', h: h(1, 1, 1), views: ALL },
     { id: 'spaarratio', naam: 'Spaarratio', h: h(1, 1, 1), views: ALL },
     { id: 'prognose', naam: 'Jaarprognose', h: h(1, 1, 1), views: ALL },
-    { id: 'nogvrij', naam: 'Nog vrij deze maand', h: h(1, 1, 1), views: ALL },
-    { id: 'vastvrij', naam: 'Vast versus vrij', h: h(2, 2, 2), views: ALL },
+    { id: 'veranderingen', naam: 'Wat veranderde', h: h(1, 1, 2), views: ALL },
+    { id: 'donut', naam: 'Uitgaven per categorie', h: h(2, 2, 2), views: ALL },
+    { id: 'categorieen', naam: 'Categorieën tegenover gewoonlijk', h: h(2, 4, 4), views: ALL },
+    { id: 'winkels', naam: 'Waar je het meest uitgaf', h: h(2, 2, 2), views: ALL },
+    { id: 'eenmalig', naam: 'Grootste losse uitgaven', h: h(2, 2, 2), views: ALL },
+    { id: 'pockets', naam: 'Pockets', h: h(2, 3, 3), views: ALL },
+    { id: 'regel', naam: '50/30/20-regel', h: h(1, 1, 1), views: ALL },
+    { id: 'vastsoort', naam: 'Vaste kosten per soort', h: h(2, 2, 2), views: ALL },
     { id: 'vastelasten', naam: 'Vaste kosten en abonnementen', h: h(2, 4, 4), views: ALL },
+    { id: 'komend', naam: 'Wat eraan komt', h: h(2, 2, 2), views: ALL },
     { id: 'auto', naam: 'Wat kost de auto', h: h(2, 2, 2), views: ALL },
-    { id: 'categorieen', naam: 'Categorieën en potjes', h: h(2, 4, 4), views: ALL },
-    { id: 'regel', naam: '50/30/20-regel', h: h(2, 2, 2), views: ALL },
-    { id: 'opvallend', naam: 'Opvallend', h: h(2, 2, 2), views: ALL },
-    { id: 'opgebouwd', naam: 'Opzij gezet', h: h(2, 2, 2), views: ALL },
+    { id: 'vastvrij', naam: 'Vast versus vrij', h: h(2, 2, 2), views: ALL },
+    { id: 'spaarverloop', naam: 'Gespaard per maand', h: h(2, 2, 2), views: ALL },
     { id: 'beleggingen', naam: 'Beleggingen (ETF)', h: h(1, 2, 2), views: ALL },
     { id: 'buffer', naam: 'Buffer', h: h(1, 1, 1), views: ALL },
     { id: 'spaardoel', naam: 'Spaardoel', h: h(1, 1, 1), views: ALL },
+    { id: 'opzij', naam: 'Totaal opzij gezet', h: h(1, 1, 1), views: ALL },
+    { id: 'fire', naam: 'FIRE', h: h(2, 3, 3), views: ['MATS', 'SOFIE'] },
+    { id: 'fireinst', naam: 'FIRE-instellingen', h: h(1, 1, 1), views: ['MATS', 'SOFIE'] },
     { id: 'gemiddelde', naam: 'Gemiddelde per maand', h: h(1, 1, 1), views: ALL },
     { id: 'inkomenflow', naam: 'Waar ging het inkomen heen', h: h(2, 2, 2), views: ALL },
-    { id: 'maandverloop', naam: 'Staafjes per maand', h: h(2, 2, 2), views: ALL },
     { id: 'eerlijkheid', naam: 'Wie betaalde wat', h: h(2, 2, 2), views: ['SAMEN'] },
     { id: 'gedeeld', naam: 'Gedeeld versus persoonlijk', h: h(2, 2, 2), views: ['SAMEN'] }
   ];
@@ -46,10 +55,12 @@
   CATALOG.forEach(function (w) { BY_ID[w.id] = w; });
 
   var D = {
-    overzicht: [['verloop', 'L'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gespaard', 'S'], ['spaarratio', 'S'], ['prognose', 'M'], ['nogvrij', 'M']],
-    vast: [['vastvrij', 'M'], ['vastelasten', 'M'], ['auto', 'M']],
-    uitgaven: [['categorieen', 'M'], ['regel', 'M'], ['opvallend', 'M']],
-    sparen: [['opgebouwd', 'L'], ['beleggingen', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['gemiddelde', 'M']],
+    overzicht: [['verloop', 'L'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gespaard', 'S'], ['spaarratio', 'S'], ['prognose', 'M'], ['veranderingen', 'M']],
+    uitgaven: [['donut', 'M'], ['categorieen', 'M'], ['winkels', 'S'], ['eenmalig', 'S']],
+    pockets: [['pockets', 'L'], ['regel', 'L']],
+    vast: [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'S'], ['auto', 'S']],
+    sparen: [['spaarverloop', 'L'], ['beleggingen', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['opzij', 'M']],
+    fire: [['fire', 'L'], ['fireinst', 'L']],
     samen: [['eerlijkheid', 'M'], ['gedeeld', 'M'], ['inkomenflow', 'L']]
   };
 

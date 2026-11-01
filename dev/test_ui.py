@@ -121,20 +121,19 @@ with sync_playwright() as pw:
     page.click('[data-per=maand]')
     # vegen en pagina's: pijltjestoets, veeg met de muis, bolletjes
     page.keyboard.press('ArrowRight')
-    if page.locator('#ptitle').inner_text() != 'Vaste kosten': fails.append('pijltje rechts gaat niet naar volgende pagina')
+    if page.locator('#ptitle').inner_text() != 'Uitgaven': fails.append('pijltje rechts gaat niet naar volgende pagina')
     g = page.locator('#grid').bounding_box()
     page.mouse.move(g['x'] + g['width'] * .8, g['y'] + 200); page.mouse.down(); page.mouse.move(g['x'] + g['width'] * .3, g['y'] + 210, steps=6); page.mouse.up(); page.wait_for_timeout(350)
-    if page.locator('#ptitle').inner_text() != 'Uitgaven': fails.append('vegen gaat niet naar volgende pagina: ' + page.locator('#ptitle').inner_text())
+    if page.locator('#ptitle').inner_text() != 'Pockets': fails.append('vegen gaat niet naar volgende pagina: ' + page.locator('#ptitle').inner_text())
     # doorklikken opent een vel met betalingen
-    for pg, sel in [(2, '[data-id=categorieen] [data-dd]'), (2, '[data-id=regel] [data-dd]'), (1, '[data-id=vastvrij] [data-dd]'), (1, '[data-id=vastelasten] [data-dd]')]:
+    for pg, sel in [(1, '[data-id=categorieen] [data-dd]'), (1, '[data-id=donut] .sl[data-dd]'), (1, '[data-id=donut] .lrow[data-dd]'), (2, '[data-id=regel] [data-dd]'), (3, '[data-id=vastsoort] .lrow[data-dd]'), (3, '[data-id=vastelasten] [data-dd]')]:
         page.locator('#dots button').nth(pg).click(); page.wait_for_timeout(320)
         if not page.locator(sel).count(): fails.append('geen doorklik in ' + sel); continue
-        page.locator(sel).first.click(); page.wait_for_selector('#sheet')
+        (page.locator(sel).first.dispatch_event('click') if '.sl' in sel else page.locator(sel).first.click()); page.wait_for_selector('#sheet')
         if page.locator('#sheet .list li').count() < 1: fails.append('doorklik toont geen betalingen ' + sel)
         page.keyboard.press('Escape')
     page.click('[data-pg=uitgaven]'); page.wait_for_timeout(320)
-    page.click('[data-wt="opvallend:winkels"]')
-    page.click('[data-more=opvallend]')
+    page.click('[data-more=winkels]')
     if page.locator('#sheet .list li').count() < 6: fails.append('Toon alle toont te weinig')
     page.keyboard.press('Escape')
     page.click('[data-pg=overzicht]'); page.wait_for_timeout(320)
@@ -159,8 +158,8 @@ with sync_playwright() as pw:
     if not page.locator('[data-add=prognose]').count(): fails.append('verwijderde widget niet in galerij')
     if page.locator('[data-add=eerlijkheid]').count(): fails.append('eerlijkheid in galerij van MATS')
     if page.locator('[data-add=buffer]').count(): fails.append('widget van een andere pagina staat in de galerij')
-    page.click('[data-add=maandverloop]')
-    if not any(x.startswith('maandverloop') for x in order()): fails.append('toevoegen werkt niet')
+    page.click('[data-add=vastvrij]')
+    if not any(x.startswith('vastvrij') for x in order()): fails.append('toevoegen werkt niet')
     # slepen met de muis via de greep
     page.evaluate('scrollTo(0, 0)'); page.wait_for_timeout(100)
     a = page.locator('[data-hd=gespaard]').bounding_box(); t = page.locator('[data-id=verloop]').bounding_box()
@@ -182,21 +181,41 @@ with sync_playwright() as pw:
     cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []}); page.wait_for_timeout(400)
     ids = [x.split(':')[0] for x in order()]
     if ids.index('spaarratio') > 1: fails.append('lang drukken en slepen (touch) werkt niet: ' + ','.join(ids[:4]))
-    saved = page.evaluate("() => localStorage.getItem('hb_l3_MATS:overzicht')")
-    if not saved or 'maandverloop' not in saved: fails.append('indeling niet bewaard')
+    saved = page.evaluate("() => localStorage.getItem('hb_l4_MATS:overzicht')")
+    if not saved or 'vastvrij' not in saved: fails.append('indeling niet bewaard')
     page.reload(); page.wait_for_selector('#grid .w')
-    if not any(x.startswith('maandverloop') for x in order()): fails.append('indeling niet hersteld na herladen')
+    if not any(x.startswith('vastvrij') for x in order()): fails.append('indeling niet hersteld na herladen')
     page.click('#edit'); page.click('[data-act=reset]'); page.click('#edit')
-    if any(x.startswith('maandverloop') for x in order()): fails.append('standaard herstellen werkt niet')
+    if any(x.startswith('vastvrij') for x in order()): fails.append('standaard herstellen werkt niet')
     # lang drukken buiten bewerkmodus opent bewerkmodus
     box = page.locator('[data-id=inkomen] .wt').bounding_box()
     cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': box['x'] + 20, 'y': box['y'] + 8}]})
     page.wait_for_timeout(700); cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []}); page.wait_for_timeout(200)
     if not page.locator('body.editing').count(): fails.append('lang drukken opent bewerkmodus niet')
     # kapotte opslag breekt niets
-    page.evaluate("() => { localStorage.setItem('hb_l3_SOFIE:overzicht', '{kapot'); localStorage.setItem('hb_person', 'SOFIE'); localStorage.setItem('hb_page_SOFIE', 'overzicht') }")
+    page.evaluate("() => { localStorage.setItem('hb_l4_SOFIE:overzicht', '{kapot'); localStorage.setItem('hb_person', 'SOFIE'); localStorage.setItem('hb_page_SOFIE', 'overzicht') }")
     page.reload(); page.wait_for_selector('#grid .w')
     if page.locator('#grid .w').count() < 7: fails.append('kapotte opslag geeft geen standaardindeling')
+    # pockets instellen in het dashboard (lokaal in testmodus)
+    page.evaluate("() => { localStorage.setItem('hb_person', 'SOFIE') }"); page.reload(); page.wait_for_selector('#grid .w')
+    page.click('[data-pg=pockets]'); page.wait_for_timeout(320)
+    page.click('[data-act=pockets]'); page.wait_for_selector('#pe')
+    page.fill('[data-pi="0:Naam"]', 'Boodschappen'); page.fill('[data-pi="0:Bedrag"]', '250')
+    page.click('[data-pe="save"]')
+    if 'minstens' not in page.locator('#peerr').inner_text(): fails.append('pocket zonder categorie wordt niet geweigerd')
+    page.locator('[data-pe^="cat:0:Boodschappen"]').click(); page.click('[data-pe="save"]'); page.wait_for_timeout(200)
+    if page.locator('.pk').count() != 1: fails.append('pocket bewaren werkt niet')
+    else:
+        page.locator('.pk').first.click(); page.wait_for_selector('#sheet')
+        if page.locator('#sheet .list li').count() < 1: fails.append('pocket toont geen betalingen')
+        page.keyboard.press('Escape')
+    page.reload(); page.wait_for_selector('#grid .w')
+    if page.locator('.pk').count() != 1: fails.append('pocket niet bewaard na herladen')
+    # FIRE-instellingen
+    page.click('[data-pg=fire]'); page.wait_for_timeout(320)
+    page.click('[data-act=fire]'); page.fill('[data-fk=GEBOORTEJAAR]', '1995'); page.fill('[data-fk=FIRE_DOEL]', '600000'); page.click('[data-act=firesave]'); page.wait_for_timeout(200)
+    if '600.000' not in page.locator('[data-id=fireinst]').inner_text(): fails.append('FIRE-doel niet overgenomen')
+    if ' op je ' not in page.locator('[data-id=fire] .wt').inner_text() and 'niet binnen' not in page.locator('[data-id=fire] .wt').inner_text(): fails.append('FIRE-titel zonder leeftijd: ' + page.locator('[data-id=fire] .wt').inner_text())
     # gegevens en rekeningen zitten in het menu
     page.click('#menu'); page.click('[data-act=data]')
     if page.locator('#sheet .list li').count() < 3: fails.append('gegevens en rekeningen leeg')
@@ -206,14 +225,14 @@ with sync_playwright() as pw:
 
     # 2b. gedeelde indeling uit het blad wint van wat op het toestel staat
     fx = json.load(open(os.path.join(ROOT, 'data', 'fixture.json')))
-    fx3 = dict(fx); fx3['indeling'] = {'v': 3, 'MATS:overzicht': [{'id': 'maandverloop', 'size': 'L'}, {'id': 'auto', 'size': 'L'}]}
+    fx3 = dict(fx); fx3['indeling'] = {'v': 4, 'MATS:overzicht': [{'id': 'vastvrij', 'size': 'L'}, {'id': 'auto', 'size': 'L'}]}
     errors = []
     ctx, page = new_page(b, 820, 1180, 'light', errors, fx3)
     page.goto(BASE + 'index.html?src=fixture'); page.wait_for_selector('#grid .w')
-    page.evaluate("() => { localStorage.setItem('hb_l3_MATS:overzicht', JSON.stringify({v:3,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS'); localStorage.removeItem('hb_page_MATS') }")
+    page.evaluate("() => { localStorage.setItem('hb_l4_MATS:overzicht', JSON.stringify({v:4,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS'); localStorage.removeItem('hb_page_MATS') }")
     page.reload(); page.wait_for_selector('#grid .w')
     ids = page.evaluate("() => [...document.querySelectorAll('#grid .w')].map(t => t.dataset.id)")
-    if ids != ['maandverloop', 'auto']: fails.append('gedeelde indeling niet gebruikt: ' + ','.join(ids))
+    if ids != ['vastvrij', 'auto']: fails.append('gedeelde indeling niet gebruikt: ' + ','.join(ids))
     check(page, 'gedeelde indeling')
     for e in errors: fails.append('gedeelde indeling console: ' + e)
     ctx.close()

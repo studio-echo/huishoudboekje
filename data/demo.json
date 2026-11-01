@@ -2926,7 +2926,7 @@
 "Transactie_ID": "DEMO-0225"
 }
 ],
-"potjes": [
+"pockets": [
 {
 "Naam": "Boodschappen",
 "Categorieen": "Boodschappen",
@@ -2937,177 +2937,197 @@
 "Naam": "Uit eten",
 "Categorieen": "Horeca & delivery",
 "Bedrag": 120,
-"Wie": ""
+"Wie": "Samen"
+},
+{
+"Naam": "Uit eten",
+"Categorieen": "Horeca & delivery",
+"Bedrag": 90,
+"Wie": "Mats"
 },
 {
 "Naam": "Shopping",
-"Categorieen": "Shopping & aankopen, Persoonlijke verzorging",
-"Procent": "3%",
-"Wie": ""
+"Categorieen": "Shopping & aankopen, Vrije tijd & events",
+"Bedrag": 120,
+"Wie": "Mats"
+},
+{
+"Naam": "Verzorging en kleding",
+"Categorieen": "Persoonlijke verzorging, Shopping & aankopen",
+"Bedrag": 110,
+"Wie": "Sofie"
+},
+{
+"Naam": "Uit eten",
+"Categorieen": "Horeca & delivery",
+"Bedrag": 60,
+"Wie": "Sofie"
 }
 ],
 "beleggingen": [
 {
-"Datum": "2026-03-05",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "aankoop",
-"Bedrag": 200,
-"Aantal": 2,
-"Wie": "Samen"
+"Datum": "2026-03-28",
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO WERELD ETF ACC",
+"ISIN": "XX0000000001",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 2,
+"Koers": 93.78,
+"Belegde_Waarde": 190.0,
+"Huidige_Waarde": 187.56
 },
 {
 "Datum": "2026-03-28",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "waarde",
-"Bedrag": 197.43,
-"Wie": "Samen"
-},
-{
-"Datum": "2026-03-28",
-"ETF": "Opkomende markten (demo)",
-"Soort": "waarde",
-"Bedrag": 951.18,
-"Wie": "Mats"
-},
-{
-"Datum": "2026-04-05",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "aankoop",
-"Bedrag": 200,
-"Aantal": 2,
-"Wie": "Samen"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO OPKOMENDE MARKTEN ETF",
+"ISIN": "XX0000000002",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 1,
+"Koers": 30.39,
+"Belegde_Waarde": 31.0,
+"Huidige_Waarde": 30.39
 },
 {
 "Datum": "2026-04-28",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "waarde",
-"Bedrag": 404.36,
-"Wie": "Samen"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO WERELD ETF ACC",
+"ISIN": "XX0000000001",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 4,
+"Koers": 96.03,
+"Belegde_Waarde": 380.0,
+"Huidige_Waarde": 384.12
 },
 {
 "Datum": "2026-04-28",
-"ETF": "Opkomende markten (demo)",
-"Soort": "waarde",
-"Bedrag": 1028.56,
-"Wie": "Mats"
-},
-{
-"Datum": "2026-05-05",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "aankoop",
-"Bedrag": 200,
-"Aantal": 2,
-"Wie": "Samen"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO OPKOMENDE MARKTEN ETF",
+"ISIN": "XX0000000002",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 2,
+"Koers": 31.39,
+"Belegde_Waarde": 62.0,
+"Huidige_Waarde": 62.78
 },
 {
 "Datum": "2026-05-28",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "waarde",
-"Bedrag": 606.7,
-"Wie": "Samen"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO WERELD ETF ACC",
+"ISIN": "XX0000000001",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 6,
+"Koers": 96.06,
+"Belegde_Waarde": 570.0,
+"Huidige_Waarde": 576.36
 },
 {
 "Datum": "2026-05-28",
-"ETF": "Opkomende markten (demo)",
-"Soort": "waarde",
-"Bedrag": 979.96,
-"Wie": "Mats"
-},
-{
-"Datum": "2026-06-05",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "aankoop",
-"Bedrag": 200,
-"Aantal": 2,
-"Wie": "Samen"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO OPKOMENDE MARKTEN ETF",
+"ISIN": "XX0000000002",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 3,
+"Koers": 30.97,
+"Belegde_Waarde": 93.0,
+"Huidige_Waarde": 92.91
 },
 {
 "Datum": "2026-06-28",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "waarde",
-"Bedrag": 823.86,
-"Wie": "Samen"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO WERELD ETF ACC",
+"ISIN": "XX0000000001",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 8,
+"Koers": 97.83,
+"Belegde_Waarde": 760.0,
+"Huidige_Waarde": 782.64
 },
 {
 "Datum": "2026-06-28",
-"ETF": "Opkomende markten (demo)",
-"Soort": "waarde",
-"Bedrag": 1026.7,
-"Wie": "Mats"
-},
-{
-"Datum": "2026-07-05",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "aankoop",
-"Bedrag": 200,
-"Aantal": 2,
-"Wie": "Samen"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO OPKOMENDE MARKTEN ETF",
+"ISIN": "XX0000000002",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 4,
+"Koers": 31.62,
+"Belegde_Waarde": 124.0,
+"Huidige_Waarde": 126.48
 },
 {
 "Datum": "2026-07-28",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "waarde",
-"Bedrag": 1048.82,
-"Wie": "Samen"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO WERELD ETF ACC",
+"ISIN": "XX0000000001",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 10,
+"Koers": 99.64,
+"Belegde_Waarde": 950.0,
+"Huidige_Waarde": 996.4
 },
 {
 "Datum": "2026-07-28",
-"ETF": "Opkomende markten (demo)",
-"Soort": "waarde",
-"Bedrag": 1017.59,
-"Wie": "Mats"
-},
-{
-"Datum": "2026-08-05",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "aankoop",
-"Bedrag": 200,
-"Aantal": 2,
-"Wie": "Samen"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO OPKOMENDE MARKTEN ETF",
+"ISIN": "XX0000000002",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 5,
+"Koers": 31.64,
+"Belegde_Waarde": 155.0,
+"Huidige_Waarde": 158.2
 },
 {
 "Datum": "2026-08-28",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "waarde",
-"Bedrag": 1284.3,
-"Wie": "Samen"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO WERELD ETF ACC",
+"ISIN": "XX0000000001",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 12,
+"Koers": 101.67,
+"Belegde_Waarde": 1140.0,
+"Huidige_Waarde": 1220.04
 },
 {
 "Datum": "2026-08-28",
-"ETF": "Opkomende markten (demo)",
-"Soort": "waarde",
-"Bedrag": 993.29,
-"Wie": "Mats"
-},
-{
-"Datum": "2026-09-05",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "aankoop",
-"Bedrag": 200,
-"Aantal": 2,
-"Wie": "Samen"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO OPKOMENDE MARKTEN ETF",
+"ISIN": "XX0000000002",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 6,
+"Koers": 31.49,
+"Belegde_Waarde": 186.0,
+"Huidige_Waarde": 188.94
 },
 {
 "Datum": "2026-09-28",
-"ETF": "Wereld-ETF (demo)",
-"Soort": "waarde",
-"Bedrag": 1517.15,
-"Wie": "Samen"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO WERELD ETF ACC",
+"ISIN": "XX0000000001",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 14,
+"Koers": 102.95,
+"Belegde_Waarde": 1330.0,
+"Huidige_Waarde": 1441.3
 },
 {
 "Datum": "2026-09-28",
-"ETF": "Opkomende markten (demo)",
-"Soort": "waarde",
-"Bedrag": 1049.69,
-"Wie": "Mats"
+"Rekening_ID": "MATS-EFFECTEN-DEMO",
+"Naam": "DEMO OPKOMENDE MARKTEN ETF",
+"ISIN": "XX0000000002",
+"Type": "ETF accumulerend",
+"Hoeveelheid": 7,
+"Koers": 32.25,
+"Belegde_Waarde": 217.0,
+"Huidige_Waarde": 225.75
+}
+],
+"instellingen": [
+{
+"Sleutel": "MATS.GEBOORTEJAAR",
+"Waarde": "1994"
 },
 {
-"Datum": "2026-02-10",
-"ETF": "Opkomende markten (demo)",
-"Soort": "aankoop",
-"Bedrag": 1000,
-"Aantal": 30,
-"Wie": "Mats"
+"Sleutel": "SOFIE.GEBOORTEJAAR",
+"Waarde": "1995"
 }
 ],
 "rekeningen": [

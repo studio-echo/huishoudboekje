@@ -426,54 +426,101 @@
     return { perSoort: o, totaal: tot, rows: list };
   }
 
-  /* ---------- potjes ---------- */
-  /* Tabblad Potjes: Naam, Categorieen (komma's), Bedrag (per maand) of Procent (van inkomen), Wie.
-     Zonder tabblad: een voorstel op basis van de 3 grootste categorieen (gemiddelde, afgerond naar boven op 50). */
-  function pockets(ctx, view, rows, nMonths, avgRows, avgN) {
-    var tab = (ctx.data.potjes || []).filter(function (p) {
-      var w = String(p.Wie || '').toUpperCase(); return p.Naam && (!w || w === view || w === 'IEDEREEN' || w === 'ALLE');
+  /* ---------- pockets ---------- */
+  /* Tabblad Pockets: Naam, Categorieen (komma's), Bedrag (per maand), Wie (Mats, Sofie, Samen). Geen voorstel:
+     de bedragen kies je zelf (of je financieel adviseur), in het blad of in het dashboard. */
+  function pocketList(ctx, view) {
+    return (ctx.data.pockets || []).filter(function (p) {
+      var w = String(p.Wie || '').toUpperCase().trim(); return p.Naam && (w === view || (!w && view === 'SAMEN'));
+    }).map(function (p) {
+      return { naam: String(p.Naam), cats: String(p.Categorieen || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean), budget: num_(p.Bedrag), wie: String(p.Wie || '').trim() };
     });
-    var inc = metrics(rows).inkomen / (nMonths || 1), voorstel = false;
-    var spend = function (rs, cats) {
-      var s = 0; rs.forEach(function (x) { if (x.t === 'uitgave' && cats.indexOf(x.r.Categorie) >= 0) s -= x.a; }); return s;
-    };
-    if (!tab.length) {
-      voorstel = true;
-      tab = byCategory(avgRows).filter(function (c) { return NOT_FIXED[c.cat] && c.cat !== 'Varia'; }).slice(0, 4).map(function (c) { return { Naam: c.cat, Categorieen: c.cat, Bedrag: Math.ceil(c.bedrag / (avgN || 1) / 50) * 50 }; });
-    }
-    return { voorstel: voorstel, list: tab.map(function (p) {
-      var cats = String(p.Categorieen || p.Naam).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-      var pct = +String(p.Procent || '').replace('%', '').replace(',', '.') || 0; if (pct > 1) pct /= 100;
-      var budget = +String(p.Bedrag || '').replace(',', '.') || 0;
-      if (!budget && pct) budget = pct * inc;
-      return { naam: String(p.Naam), cats: cats, budget: budget, procent: pct || null, uitgegeven: spend(rows, cats) / (nMonths || 1) };
-    }).filter(function (p) { return p.budget > 0; }) };
+  }
+  function num_(x) { if (typeof x === 'number') return x; var s = String(x == null ? '' : x).replace(/\s|€/g, ''); if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.'); return parseFloat(s) || 0; }
+  function pockets(ctx, view, rows, nMonths) {
+    return pocketList(ctx, view).filter(function (p) { return p.budget > 0 && p.cats.length; }).map(function (p) {
+      var s = 0; rows.forEach(function (x) { if (x.t === 'uitgave' && p.cats.indexOf(x.r.Categorie) >= 0) s -= x.a; });
+      p.uitgegeven = s / (nMonths || 1); return p;
+    });
   }
 
   /* ---------- beleggingen (ETF) ---------- */
-  /* Tabblad Beleggingen: Datum, ETF, Soort (aankoop | waarde), Bedrag, Aantal, Wie.
-     aankoop = wat je betaalde; waarde = de waarde van die ETF op die datum (bv. van MeDirect overgetypt). */
+  /* Tabblad Beleggingen: een momentopname per datum en ETF (Datum, Rekening_ID, Naam, ISIN, Hoeveelheid, Koers,
+     Belegde_Waarde = wat je betaalde, Huidige_Waarde). Eigenaar volgt uit Rekeningen of het voorvoegsel MATS-/SOFIE-. */
+  function ownerOfAccount(ctx, id) {
+    var o = ctx.own[id]; if (o) return o === OWNER.MATS ? 'MATS' : o === OWNER.SOFIE ? 'SOFIE' : 'SAMEN';
+    return /^MATS/i.test(id) ? 'MATS' : /^SOFIE/i.test(id) ? 'SOFIE' : 'SAMEN';
+  }
   function investments(ctx, view) {
     var rows = (ctx.data.beleggingen || []).filter(function (r) {
-      var w = String(r.Wie || '').toUpperCase(); return r.ETF && r.Datum && (view === 'SAMEN' || !w || w === view || w === 'SAMEN');
+      return r.Datum && (r.Naam || r.ISIN) && (view === 'SAMEN' || ownerOfAccount(ctx, r.Rekening_ID || '') === view);
     });
     if (!rows.length) return null;
-    var f = function (r) { var w = String(r.Wie || '').toUpperCase(); return view !== 'SAMEN' && (!w || w === 'SAMEN') ? 0.5 : 1; };
-    var by = {}, dates = {};
+    var dates = {}, latest = {};
     rows.forEach(function (r) {
-      var e = by[r.ETF] = by[r.ETF] || { etf: r.ETF, ingelegd: 0, aantal: 0, waarde: null, datum: null, hist: [] };
-      var soort = String(r.Soort || 'aankoop').toLowerCase(), b = Math.abs(+r.Bedrag || 0) * f(r), d = String(r.Datum).slice(0, 10);
-      if (/waarde|koers/.test(soort)) { e.hist.push({ d: d, v: b }); if (!e.datum || d >= e.datum) { e.waarde = b; e.datum = d; } dates[d] = 1; }
-      else if (/verkoop/.test(soort)) { e.ingelegd -= b; e.aantal -= (+r.Aantal || 0) * f(r); }
-      else { e.ingelegd += b; e.aantal += (+r.Aantal || 0) * f(r); }
+      var d = String(r.Datum).slice(0, 10), k = r.ISIN || r.Naam;
+      (dates[d] = dates[d] || {})[k] = r;
+      if (!latest[k] || d >= String(latest[k].Datum).slice(0, 10)) latest[k] = r;
     });
-    var list = Object.keys(by).map(function (k) { var e = by[k]; if (e.waarde == null) e.waarde = e.ingelegd; return e; }).sort(function (a, b) { return b.waarde - a.waarde; });
-    /* totale waarde door de tijd: per waarde-datum de laatst gekende waarde van elke ETF */
+    var last = Object.keys(dates).sort().pop();
+    var list = Object.keys(latest).filter(function (k) { return String(latest[k].Datum).slice(0, 10) === last && num_(latest[k].Hoeveelheid) !== 0; }).map(function (k) {
+      var r = latest[k];
+      return { naam: String(r.Naam || k), isin: r.ISIN || '', aantal: num_(r.Hoeveelheid), ingelegd: num_(r.Belegde_Waarde), waarde: num_(r.Huidige_Waarde), wie: ownerOfAccount(ctx, r.Rekening_ID || '') };
+    }).sort(function (a, b) { return b.waarde - a.waarde; });
     var hist = Object.keys(dates).sort().map(function (d) {
-      return { d: d, v: list.reduce(function (s, e) { var h = e.hist.filter(function (x) { return x.d <= d; }).sort(function (a, b) { return a.d < b.d ? -1 : 1; }).pop(); return s + (h ? h.v : 0); }, 0) };
+      var s = 0, i = 0; Object.keys(dates[d]).forEach(function (k) { s += num_(dates[d][k].Huidige_Waarde); i += num_(dates[d][k].Belegde_Waarde); });
+      return { d: d, v: s, ingelegd: i };
     });
     var waarde = list.reduce(function (a, e) { return a + e.waarde; }, 0), ingelegd = list.reduce(function (a, e) { return a + e.ingelegd; }, 0);
-    return { list: list, waarde: waarde, ingelegd: ingelegd, winst: waarde - ingelegd, rendement: ingelegd > 0 ? (waarde - ingelegd) / ingelegd : null, hist: hist };
+    return { list: list, datum: last, waarde: waarde, ingelegd: ingelegd, winst: waarde - ingelegd, rendement: ingelegd > 0 ? (waarde - ingelegd) / ingelegd : null, hist: hist };
+  }
+
+  /* ---------- soorten vaste kosten ---------- */
+  var FIXED_TYPES = [
+    ['Wonen en leningen', /woonkrediet|lening|hypothe|huur|syndic|krediet/],
+    ['Verzekeringen', /verzeker|insurance|vivium|ethias|\bag\b|baloise|allianz|axa|dvv|laka|mutualiteit|helan|ziekenfonds/],
+    ['Energie en water', /energie|engie|luminus|eneco|fluvius|water|farys|pidpa|de watergroep|elektric|gas\b|frank energie|bolt/],
+    ['Telecom en internet', /proximus|telenet|orange|base\b|mobile vikings|scarlet|internet|gsm/],
+    ['Abonnementen', /^$/],
+    ['Mobiliteit', /mobiliteit|parkeren|seety|nmbs|de lijn|velo/],
+    ['Bank en administratie', /bank|fintro|bnp|kbc|belfius|ing\b|bijdrage|pakketkost|doccle|fod|spf|belasting/]
+  ];
+  function fixedType(r) {
+    if (r.abonnement) return 'Abonnementen';
+    if (r.lening) return 'Wonen en leningen';
+    var s = norm(r.key + ' ' + r.naam + ' ' + r.cat);
+    for (var i = 0; i < FIXED_TYPES.length; i++) if (FIXED_TYPES[i][1].test(s) && FIXED_TYPES[i][0] !== 'Abonnementen') return FIXED_TYPES[i][0];
+    return r.cat === 'Woonkost' ? 'Wonen en leningen' : 'Andere';
+  }
+
+  /* ---------- wat komt eraan: kwartaal- en jaarbetalingen ---------- */
+  /* Per tegenpartij die per kwartaal of per jaar betaald wordt: laatste betaling en de verwachte volgende maand. */
+  function upcoming(rows, freqKeys, lastMonth) {
+    var g = {};
+    rows.forEach(function (x) {
+      if (x.t !== 'uitgave') return;
+      var k = counterparty(x.r) || '?', kind = freqKeys[k];
+      if (kind !== 'kwartaal' && kind !== 'jaarlijks') return;
+      var o = g[k] = g[k] || { key: k, kind: kind, naam: cleanName(x.r.Tegenpartij || x.r.Omschrijving), laatste: '', bedrag: 0, cat: x.r.Categorie };
+      if (x.m > o.laatste) { o.laatste = x.m; o.bedrag = 0; }
+      if (x.m === o.laatste) o.bedrag -= x.a;
+    });
+    return Object.keys(g).map(function (k) { var o = g[k]; o.volgende = addM(o.laatste, o.kind === 'kwartaal' ? 3 : 12); return o; })
+      .filter(function (o) { return o.bedrag >= 1; })
+      .sort(function (a, b) { return a.volgende < b.volgende ? -1 : a.volgende > b.volgende ? 1 : b.bedrag - a.bedrag; });
+  }
+
+  /* ---------- FIRE ---------- */
+  /* Vermogen groeit elk jaar met rendement r en 12 x de maandelijkse inleg. Geeft het eerste jaar waarin het doel
+     gehaald wordt, en de reeks per jaar (max. 60 jaar). Alle bedragen in euro van vandaag (reëel rendement). */
+  function fire(start, perMonth, r, target, maxYears) {
+    var w = start, series = [{ y: 0, v: w }], hit = w >= target ? 0 : null;
+    for (var y = 1; y <= (maxYears || 60); y++) {
+      w = w * (1 + r) + perMonth * 12;
+      series.push({ y: y, v: w });
+      if (hit === null && w >= target) hit = y;
+    }
+    return { jaren: hit, reeks: series };
   }
 
   /* ---------- notities over de data ---------- */
@@ -505,6 +552,6 @@
     counterparty: counterparty, incomeFlow: incomeFlow, byWeekday: byWeekday, buffer: buffer, notes: notes,
     hasOwnAccounts: hasOwnAccounts, cleanName: cleanName, jointIds: jointIds, median: median,
     frequency: frequency, fixedFree: fixedFree, rule503020: rule503020, needKind: needKind, carKind: carKind, carCosts: carCosts,
-    pockets: pockets, investments: investments, monthGap: monthGap
+    pockets: pockets, pocketList: pocketList, investments: investments, monthGap: monthGap, fixedType: fixedType, upcoming: upcoming, fire: fire, num: num_, ownerOfAccount: ownerOfAccount
   };
 });

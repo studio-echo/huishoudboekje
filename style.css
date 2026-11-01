@@ -326,3 +326,77 @@ body.fit #status .notes{position:absolute;right:var(--gut);z-index:25;max-width:
 .flow .rb{height:10px}
 .frb{height:14px}.frb.thin{height:6px}
 .ap{position:relative;flex:1;min-height:0;display:flex}
+
+/* ================= v4 ================= */
+/* grafiek met y-as: labels links, plot rechts */
+.chart{flex:1;min-height:0;display:flex;position:relative}
+.chart>.lines,.chart>.vplot{flex:1;min-width:0}
+.chart .lines{position:relative;padding-left:44px}
+.ya{position:absolute;left:0;top:0;bottom:28px;width:40px;pointer-events:none}
+.chart>.ya{bottom:22px}
+.ya span{position:absolute;right:4px;transform:translateY(-50%);font-size:11px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.chart:has(>.vplot){padding-left:44px}
+.vplot{position:relative;display:flex;flex-direction:column}
+.vplot svg{position:absolute;left:0;right:0;top:0;bottom:22px;width:100%;height:calc(100% - 22px);overflow:visible}
+.vcols{position:relative;flex:1;display:flex;gap:6px}
+.vc{flex:1;min-width:0;border:0;background:none;display:flex;flex-direction:column;padding:0;border-radius:8px;position:relative}
+.vc::after{content:"";position:absolute;inset:0 -3px}
+.vb{position:relative;flex:1;display:flex;justify-content:center;gap:3px}
+.vb i{position:relative;display:block;flex:0 1 26px;border-radius:5px 5px 2px 2px;min-height:2px;align-self:auto}
+.vb{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,26px);justify-content:center;gap:3px}
+.vb i{position:relative;height:auto}
+.vc .cl{height:22px;line-height:22px;font-size:12px;color:var(--muted);text-align:center;flex:none}
+.vc.sel .cl{color:var(--ink);font-weight:700}
+.vc:not(.sel){opacity:.55}.vc:hover{background:var(--card2);opacity:1}
+.dl{display:inline-block;width:14px;border-top:2px dashed var(--ink);margin-right:6px;vertical-align:3px}
+.xa{position:relative;height:22px;flex:none}
+.xa span{position:absolute;transform:translateX(-50%);font-size:11px;color:var(--muted);top:6px;white-space:nowrap}
+.gl2{position:absolute;right:4px;transform:translateY(-130%);font-size:11px;font-weight:650;color:var(--pos)}
+/* donut */
+.pie{width:min(46%,240px);max-height:100%;aspect-ratio:1;flex:none;align-self:center;overflow:visible}
+.pie .sl{cursor:pointer;transition:stroke-width .15s}
+.pie .sl:hover{stroke-width:24}
+.pl{flex:1;min-width:0;overflow:hidden}
+.pl li{min-height:30px}
+.pl .lrow{min-height:30px}.pl .lrow::after{inset:-7px 0}
+@container (max-width:300px){.pie{width:100%;max-width:150px}}
+/* pockets */
+.pkh{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted);flex:none}
+.btn.sm2{min-height:36px;padding:0 14px;font-size:13px;position:relative}
+.btn.sm2::after{content:"";position:absolute;inset:-4px 0}
+.pks{flex:1;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));grid-auto-rows:minmax(0,1fr);gap:10px;overflow:hidden}
+.pk{display:flex;align-items:center;gap:12px;background:var(--card2);border:0;border-radius:16px;padding:10px 14px;text-align:left;min-height:64px;color:inherit;font:inherit}
+.pk:hover{background:color-mix(in srgb,var(--accent) 8%,var(--card2))}
+.pring{width:64px;height:64px;flex:none}
+.pring .rt{font-size:21px}
+.pkt{display:flex;flex-direction:column;min-width:0;font-size:13px;color:var(--muted)}
+.pkt b{font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty.col{flex-direction:column;align-items:flex-start;justify-content:center;gap:12px;max-width:560px}
+.rule.row{flex-direction:row;gap:24px;align-items:center}
+.rule.row>*{flex:1;min-width:0}
+@container (max-width:520px){.rule.row{flex-direction:column;align-items:stretch;gap:8px}}
+.cm{color:var(--mats)!important}.cs{color:var(--sofie)!important}
+/* editors */
+.pec{background:var(--card);border-radius:18px;padding:12px;margin:10px 0;display:grid;gap:10px}
+.per{display:flex;gap:8px;align-items:center}
+.per input{flex:1;min-width:0}.per .amt{flex:0 0 130px}
+.per .eb.rm{position:static}
+.pcats{display:flex;flex-wrap:wrap;gap:6px}
+.pcats button{min-height:36px;padding:0 12px;border-radius:99px;border:1px solid var(--line);background:var(--card2);font-size:13px;position:relative}
+.pcats button::after{content:"";position:absolute;inset:-4px -2px}
+.pcats button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on)}
+.fe{display:grid;gap:12px}.fe label{display:grid;gap:6px;font-size:14px;font-weight:600}
+.gbar.thin{height:8px}
+.w.hero:has(.xa) .hb{justify-content:flex-start;padding-top:8px}
+.pks{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));grid-auto-rows:minmax(84px,132px);align-content:start;overflow:hidden}
+.spk{flex:0 1 38%;min-height:50px;max-height:38%}
+.pie text{pointer-events:none}
+.vcols{gap:2px}.vc::after{inset:0 -2px}
+@container (max-width:380px){.vcols .vc:nth-last-child(n+7){display:none}}
+@container (max-width:300px){.vcols .vc:nth-last-child(n+6){display:none}}
+@container (max-width:520px){.rule.row{gap:2px;justify-content:center}.rule.row>*{flex:none;min-height:44px;justify-content:center}.rule.row .rb{height:5px}}
+@container (max-width:320px){.chart .lines{padding-left:0}.chart .lines>.ya{display:none}}
+.goal:has(.thin){gap:3px}.goal:has(.thin) .gl{font-size:11.5px}
+@container (max-width:200px){.goal:has(.thin) .gbar{display:none}}
+.pks{flex:none;max-height:62%}
+.pkc{flex:1;min-height:110px;display:flex;flex-direction:column;gap:6px}

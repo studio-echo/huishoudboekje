@@ -47,7 +47,9 @@ function validate(d) {
 }
 function setData(d, src) {
   S.data = validate(d); S.src = src;
-  if (d.indeling && !lsGet('hb_layout_dirty')) { S.layouts = L.fromShared(d.indeling); Object.keys(S.layouts).forEach(function (k) { lsSet('hb_l3_' + k, L.serialize(S.layouts[k])); }); } S.ctx = C.makeCtx(S.data); S.dq = C.dataQuality(S.ctx);
+  if (src !== 'live') ['pockets', 'instellingen'].forEach(function (k) { var v = lsGet('hb_local_' + k); if (v) try { S.data[k] = JSON.parse(v); } catch (e) {} });
+  S.data.pockets = Array.isArray(S.data.pockets) ? S.data.pockets : []; S.data.instellingen = Array.isArray(S.data.instellingen) ? S.data.instellingen : [];
+  if (d.indeling && !lsGet('hb_layout_dirty')) { S.layouts = L.fromShared(d.indeling); Object.keys(S.layouts).forEach(function (k) { lsSet('hb_l4_' + k, L.serialize(S.layouts[k])); }); } S.ctx = C.makeCtx(S.data); S.dq = C.dataQuality(S.ctx);
   var L0 = S.dq.lastComplete, ms = S.dq.months, first = CFG.EERSTE_VOLLEDIGE_MAAND || ms[0];
   if (!L0) fail('Er zijn nog geen volledige maanden in het blad.');
   if (first > L0 || first < ms[0]) first = ms[0] > L0 ? L0 : ms[0];
@@ -116,20 +118,35 @@ function page() {
 }
 function curKey() { return L.key(S.view, page().id); }
 function layout(k) {
-  if (!S.layouts[k]) { var q = k.split(':'); S.layouts[k] = L.parseSaved(lsGet('hb_l3_' + k), q[0]) || L.defaults(q[0], q[1]); }
+  if (!S.layouts[k]) { var q = k.split(':'); S.layouts[k] = L.parseSaved(lsGet('hb_l4_' + k), q[0]) || L.defaults(q[0], q[1]); }
   return S.layouts[k];
 }
 function viewItems(view) { var o = []; L.pages(view).forEach(function (p) { o = o.concat(layout(L.key(view, p.id))); }); return o; }
-function saveLayout(k, items) { S.layouts[k] = items; lsSet('hb_l3_' + k, L.serialize(items)); lsSet('hb_layout_dirty', '1'); }
+function saveLayout(k, items) { S.layouts[k] = items; lsSet('hb_l4_' + k, L.serialize(items)); lsSet('hb_layout_dirty', '1'); }
+/* Iets naar het blad schrijven (indeling, pockets, instellingen). Enkel live; anders blijft het op dit toestel. */
+function post(body) {
+  var pw = lsGet('hb_pw');
+  if (S.src !== 'live' || !CFG.API_URL || !pw) return Promise.resolve(false);
+  body.p = pw;
+  return fetch(CFG.API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) })
+    .then(function (r) { return r.json(); })
+    .then(function (d) { if (d && d.ok) return true; throw new Error(d && d.error || 'fout'); });
+}
 function pushLayout() {
   if (!lsGet('hb_layout_dirty')) return;
-  var pw = lsGet('hb_pw');
-  if (S.src !== 'live' || !CFG.API_URL || !pw) { if (S.src !== 'live') lsDel('hb_layout_dirty'); return; }
-  var o = L.toShared(layout);
-  fetch(CFG.API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ p: pw, indeling: o }) })
-    .then(function (r) { return r.json(); })
-    .then(function (d) { if (d && d.ok) { lsDel('hb_layout_dirty'); S.saveErr = ''; } else throw new Error(); })
+  if (S.src !== 'live') { lsDel('hb_layout_dirty'); return; }
+  post({ indeling: L.toShared(layout) })
+    .then(function (ok) { if (ok) { lsDel('hb_layout_dirty'); S.saveErr = ''; } })
     .catch(function () { S.saveErr = 'Indeling enkel op dit toestel bewaard. Ze gaat naar het blad zodra er verbinding is.'; status(); });
+}
+/* Pockets en instellingen: meteen tonen, dan naar het blad (of lokaal bewaren in demo en test) */
+function saveData(key, body, done) {
+  render();
+  if (S.src === 'live') {
+    lsSet('hb_cache', JSON.stringify(S.data));
+    post(body).then(function () { announce('Bewaard in het blad'); }).catch(function (e) { S.saveErr = 'Niet bewaard in het blad (' + e.message + '). Probeer opnieuw met verbinding.'; status(); });
+  } else lsSet('hb_local_' + key, JSON.stringify(S.data[key]));
+  if (done) done();
 }
 
 /* ---------- tekenen ---------- */
@@ -261,7 +278,7 @@ function announce(t) { var a = $('#sr'); a.textContent = ''; setTimeout(function
 /* ---------- klikken ---------- */
 document.addEventListener('click', function (e) {
   if (suppressClick) { suppressClick = false; e.preventDefault(); e.stopPropagation(); return; }
-  var t = e.target.closest('button'); if (!t) return;
+  var t = e.target.closest('button,[data-dd]'); if (!t) return;
   var d = t.dataset, items = S.data ? layout(curKey()) : [];
   if (d.p) { S.view = d.p; lsSet('hb_person', S.view); render(); }
   else if (d.per) { S.per = d.per; lsSet('hb_per', S.per); render(); }
@@ -289,6 +306,9 @@ document.addEventListener('click', function (e) {
   }
   else if (d.pg) goPage(d.pg);
   else if (d.act === 'data') showMore('dataoverzicht');
+  else if (d.act === 'pockets') pocketEditor();
+  else if (d.act === 'fire') fireEditor();
+  else if (d.pe) pocketAction(d.pe, t);
   else if (d.act === 'reload') { closeSheet(); load(); }
   else if (d.act === 'close') closeSheet();
   else if (d.act === 'theme') { var th = lsGet('hb_theme') || 'auto'; lsSet('hb_theme', th === 'auto' ? 'light' : th === 'light' ? 'dark' : 'auto'); applyTheme(); menu(); }
@@ -297,6 +317,70 @@ document.addEventListener('click', function (e) {
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') { if ($('#sheet')) closeSheet(); else if (S.edit) setEdit(false); }
   else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && !$('#sheet') && !S.edit && S.data && !/INPUT|TEXTAREA/.test((document.activeElement || {}).tagName)) goPage(null, e.key === 'ArrowRight' ? 1 : -1);
+});
+
+/* ---------- pockets bewerken ---------- */
+var PE = null;
+function expenseCats() { return S.data.categorieen.filter(function (c) { return String(c.Type).toLowerCase() === 'uitgave'; }).map(function (c) { return c.Categorie; }); }
+function pocketEditor() {
+  var who = { MATS: 'Mats', SOFIE: 'Sofie', SAMEN: 'Samen' }[S.view];
+  PE = S.data.pockets.filter(function (p) { var w = String(p.Wie || '').toUpperCase().trim(); return w === S.view || (!w && S.view === 'SAMEN'); })
+    .map(function (p) { return { Naam: p.Naam, Bedrag: C.num(p.Bedrag), cats: String(p.Categorieen || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean) }; });
+  if (!PE.length) PE.push({ Naam: '', Bedrag: '', cats: [] });
+  openSheet('Pockets van ' + who, '<div id="pe"></div>');
+  drawPE();
+}
+function drawPE() {
+  var cats = expenseCats();
+  $('#pe').innerHTML = '<p class="nt">Een pocket is een budget per maand. Kies de categorieën die erin vallen. Een categorie hoort bij hoogstens één pocket.</p>' +
+    PE.map(function (p, i) {
+      return '<div class="pec"><div class="per"><input data-pi="' + i + ':Naam" value="' + esc(p.Naam) + '" placeholder="Naam, bv. Boodschappen" aria-label="Naam pocket" maxlength="40">' +
+        '<input data-pi="' + i + ':Bedrag" value="' + esc(p.Bedrag) + '" inputmode="decimal" placeholder="€ per maand" aria-label="Bedrag per maand" class="amt">' +
+        '<button class="eb rm" data-pe="del:' + i + '" aria-label="Verwijder pocket">−</button></div>' +
+        '<div class="pcats">' + cats.map(function (c) { return '<button data-pe="cat:' + i + ':' + esc(c) + '" aria-pressed="' + (p.cats.indexOf(c) >= 0) + '">' + esc(c) + '</button>'; }).join('') + '</div></div>';
+    }).join('') + '<p class="err" id="peerr" role="alert"></p><div class="gf"><button class="btn" data-pe="add">+ Pocket</button><button class="btn pri" data-pe="save">Bewaar</button></div>';
+}
+function readPE() { $$('[data-pi]').forEach(function (el) { var q = el.dataset.pi.split(':'); PE[+q[0]][q[1]] = el.value; }); }
+function pocketAction(a, t) {
+  readPE();
+  var q = a.split(':');
+  if (q[0] === 'add') PE.push({ Naam: '', Bedrag: '', cats: [] });
+  else if (q[0] === 'del') PE.splice(+q[1], 1);
+  else if (q[0] === 'cat') {
+    var p = PE[+q[1]], c = q.slice(2).join(':'), i = p.cats.indexOf(c);
+    if (i >= 0) p.cats.splice(i, 1); else { PE.forEach(function (o) { var j = o.cats.indexOf(c); if (j >= 0) o.cats.splice(j, 1); }); p.cats.push(c); }
+  } else if (q[0] === 'save') {
+    var list = PE.filter(function (p) { return String(p.Naam).trim() || p.cats.length; }), bad = list.filter(function (p) { return !String(p.Naam).trim() || !(C.num(p.Bedrag) > 0) || !p.cats.length; })[0];
+    if (bad) { $('#peerr').textContent = 'Elke pocket heeft een naam, een bedrag groter dan 0 en minstens één categorie nodig.'; return; }
+    var wie = { MATS: 'Mats', SOFIE: 'Sofie', SAMEN: 'Samen' }[S.view];
+    var others = S.data.pockets.filter(function (p) { var w = String(p.Wie || '').toUpperCase().trim(); return !(w === S.view || (!w && S.view === 'SAMEN')); });
+    S.data.pockets = others.concat(list.map(function (p) { return { Naam: String(p.Naam).trim(), Categorieen: p.cats.join(', '), Bedrag: Math.round(C.num(p.Bedrag) * 100) / 100, Wie: wie }; }));
+    closeSheet(); saveData('pockets', { pockets: S.data.pockets });
+    return;
+  }
+  drawPE();
+}
+
+/* ---------- FIRE-instellingen ---------- */
+var FIRE_KEYS = [['GEBOORTEJAAR', 'Geboortejaar', 'bv. 1995', ''], ['FIRE_DOEL', 'FIRE-bedrag (doel)', 'leeg = 25 × je jaaruitgaven', '€'], ['RENDEMENT', 'Verwacht rendement na inflatie, % per jaar', '5', '%'],
+  ['STARTVERMOGEN', 'Vermogen nu (spaarrekening + beleggingen + rekeningen)', 'leeg = ETF\'s + zichtrekening', '€'], ['INLEG', 'Inleg per maand', 'leeg = je gemiddelde spaarbedrag', '€']];
+function fireEditor() {
+  var get = function (k) { var r = S.data.instellingen.filter(function (x) { return x.Sleutel === S.view + '.' + k; })[0]; return r ? r.Waarde : ''; };
+  openSheet('FIRE-aannames voor ' + { MATS: 'Mats', SOFIE: 'Sofie' }[S.view], '<div class="fe">' + FIRE_KEYS.map(function (k) {
+    return '<label>' + k[1] + '<input data-fk="' + k[0] + '" value="' + esc(get(k[0])) + '" placeholder="' + esc(k[2]) + '" inputmode="decimal"></label>';
+  }).join('') + '<p class="nt">Alles in euro van vandaag. Rendement na inflatie: 4 tot 5% is een gangbare aanname voor een wereldwijde ETF.</p><p class="err" id="feerr" role="alert"></p><button class="btn pri" data-act="firesave">Bewaar</button></div>');
+}
+document.addEventListener('click', function (e) {
+  var t = e.target.closest('[data-act=firesave]'); if (!t) return;
+  var o = {}, err = '';
+  $$('[data-fk]').forEach(function (el) { var v = el.value.trim(); if (v && isNaN(C.num(v))) err = 'Gebruik enkel getallen.'; o[S.view + '.' + el.dataset.fk] = v ? String(C.num(v)) : ''; });
+  var gj = +o[S.view + '.GEBOORTEJAAR']; if (gj && (gj < 1930 || gj > 2015)) err = 'Dat geboortejaar lijkt niet te kloppen.';
+  if (err) { $('#feerr').textContent = err; return; }
+  Object.keys(o).forEach(function (k) {
+    var r = S.data.instellingen.filter(function (x) { return x.Sleutel === k; })[0];
+    if (r) r.Waarde = o[k]; else S.data.instellingen.push({ Sleutel: k, Waarde: o[k] });
+  });
+  closeSheet(); saveData('instellingen', { instellingen: o });
 });
 
 /* ---------- vellen (sheet) ---------- */

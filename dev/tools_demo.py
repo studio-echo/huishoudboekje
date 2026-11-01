@@ -67,15 +67,21 @@ for i, mo in enumerate(months):
         add(p + "11", S, "Administratie & overheid", -165, 0, 1, 0, "Verkeersbelasting (demo)")
 SAL = [{"Rekening_ID": M, "Datum": "2026-09-30", "Saldo": 2850.0}, {"Rekening_ID": S, "Datum": "2026-09-30", "Saldo": 3420.0},
        {"Rekening_ID": G, "Datum": "2026-09-30", "Saldo": 1240.0}]
-POT = [{"Naam": "Boodschappen", "Categorieen": "Boodschappen", "Bedrag": 180, "Wie": "Samen"},
-       {"Naam": "Uit eten", "Categorieen": "Horeca & delivery", "Bedrag": 120, "Wie": ""},
-       {"Naam": "Shopping", "Categorieen": "Shopping & aankopen, Persoonlijke verzorging", "Procent": "3%", "Wie": ""}]
+POCKETS = [{"Naam": "Boodschappen", "Categorieen": "Boodschappen", "Bedrag": 180, "Wie": "Samen"},
+           {"Naam": "Uit eten", "Categorieen": "Horeca & delivery", "Bedrag": 120, "Wie": "Samen"},
+           {"Naam": "Uit eten", "Categorieen": "Horeca & delivery", "Bedrag": 90, "Wie": "Mats"},
+           {"Naam": "Shopping", "Categorieen": "Shopping & aankopen, Vrije tijd & events", "Bedrag": 120, "Wie": "Mats"},
+           {"Naam": "Verzorging en kleding", "Categorieen": "Persoonlijke verzorging, Shopping & aankopen", "Bedrag": 110, "Wie": "Sofie"},
+           {"Naam": "Uit eten", "Categorieen": "Horeca & delivery", "Bedrag": 60, "Wie": "Sofie"}]
 BEL = []
+ETF = [("DEMO WERELD ETF ACC", "XX0000000001", 95.0, 0.012), ("DEMO OPKOMENDE MARKTEN ETF", "XX0000000002", 31.0, 0.004)]
 for i, mo in enumerate(months[:-1]):
-    BEL.append({"Datum": mo + "-05", "ETF": "Wereld-ETF (demo)", "Soort": "aankoop", "Bedrag": 200, "Aantal": 2, "Wie": "Samen"})
-    BEL.append({"Datum": mo + "-28", "ETF": "Wereld-ETF (demo)", "Soort": "waarde", "Bedrag": round(200 * (i + 1) * (1 + 0.012 * i + random.uniform(-.02, .02)), 2), "Wie": "Samen"})
-    BEL.append({"Datum": mo + "-28", "ETF": "Opkomende markten (demo)", "Soort": "waarde", "Bedrag": round(1000 * (1 + random.uniform(-.05, .06)), 2), "Wie": "Mats"})
-BEL.append({"Datum": "2026-02-10", "ETF": "Opkomende markten (demo)", "Soort": "aankoop", "Bedrag": 1000, "Aantal": 30, "Wie": "Mats"})
-out = {"transacties": T, "potjes": POT, "beleggingen": BEL, "rekeningen": REK, "categorieen": [{"Categorie": c, "Type": t} for c, t in CATS], "saldi": SAL}
+    for naam, isin, p0, g in ETF:
+        qty = (i + 1) * (2 if isin.endswith("1") else 1)
+        koers = round(p0 * (1 + g * i + random.uniform(-.02, .02)), 2)
+        BEL.append({"Datum": mo + "-28", "Rekening_ID": "MATS-EFFECTEN-DEMO", "Naam": naam, "ISIN": isin, "Type": "ETF accumulerend",
+                    "Hoeveelheid": qty, "Koers": koers, "Belegde_Waarde": round(qty * p0, 2), "Huidige_Waarde": round(qty * koers, 2)})
+INST = [{"Sleutel": "MATS.GEBOORTEJAAR", "Waarde": "1994"}, {"Sleutel": "SOFIE.GEBOORTEJAAR", "Waarde": "1995"}]
+out = {"transacties": T, "pockets": POCKETS, "beleggingen": BEL, "instellingen": INST, "rekeningen": REK, "categorieen": [{"Categorie": c, "Type": t} for c, t in CATS], "saldi": SAL}
 json.dump(out, open(sys.argv[1] if len(sys.argv) > 1 else "data/demo.json", "w"), ensure_ascii=False, indent=0)
 print(len(T), "rijen")

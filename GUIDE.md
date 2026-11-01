@@ -38,7 +38,7 @@ That is all.
 - Tap **Bewerk** or long-press a tile. Drag by the handle (⠿) or use the arrows. S, M and L set the size, − removes a tile, **+ Widget** adds one. **Standaard herstellen** resets that view. **Klaar** finishes.
 - Pages: Overzicht, Vaste kosten, Uitgaven, Sparen (and Samen). Swipe, tap the dots or use the arrow keys. On a landscape iPad each page fits the screen. Periods: Maand, Kwartaal, Jaar, Alles. Data and accounts overview lives in the ⋯ menu.
 - The layout is stored in the sheet (tab **Indeling**, created by the site), so every device shows the same. Requires the new Code.gs: paste it over the old one and deploy a new version (Manage deployments > edit > New version).
-- Optional tabs: **Potjes** (Naam, Categorieen, Bedrag or Procent, Wie), **Beleggingen** (Datum, ETF, Soort aankoop/waarde, Bedrag, Aantal, Wie), and an optional **Soort** column (nodig/wens) in Categorieen. See GIDS.md.
+- Pages: Overzicht, Uitgaven, Pockets, Vaste kosten, Sparen, FIRE (per person), Samen. Optional tabs: **Pockets** (editable in the dashboard), **Beleggingen** (monthly MeDirect snapshot per ETF), **Instellingen** (FIRE assumptions, editable in the dashboard). See GIDS.md.
 - Backlog: AI summary (Claude Pro has no API key; needs a separate paid API account).
 
 ## E. Maintenance and limits

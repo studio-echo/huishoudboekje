@@ -134,27 +134,28 @@ const V3 = (v, p) => L.defaults(v, p);
   ok('standaard ' + v + ' ' + p.id + ' vult 4x4', cells === 16 && L.clean(d, v).length === d.length, cells);
 }));
 ok('MATS en SOFIE zelfde pagina\'s', JSON.stringify(L.pages('MATS').map(p => V3('MATS', p.id))) === JSON.stringify(L.pages('SOFIE').map(p => V3('SOFIE', p.id))));
-ok('pagina Samen enkel bij SAMEN', L.pages('MATS').length === 4 && L.pages('SAMEN').length === 5);
-ok('gedeelde indeling opgeschoond, geen dubbels over pagina\'s', JSON.stringify(L.fromShared({ v: 3, 'MATS:overzicht': [{ id: 'auto', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], 'MATS:vast': [{ id: 'auto', size: 'S' }, { id: 'buffer', size: 'S' }] })) === '{"MATS:overzicht":[{"id":"auto","size":"L"}],"MATS:vast":[{"id":"buffer","size":"S"}]}');
+ok('pagina Samen enkel bij SAMEN, FIRE enkel per persoon', L.pages('MATS').length === 6 && L.pages('SAMEN').length === 6 && !L.pages('SAMEN').some(p => p.id === 'fire'));
+ok('gedeelde indeling opgeschoond, geen dubbels over pagina\'s', JSON.stringify(L.fromShared({ v: 4, 'MATS:overzicht': [{ id: 'auto', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], 'MATS:vast': [{ id: 'auto', size: 'S' }, { id: 'buffer', size: 'S' }] })) === '{"MATS:overzicht":[{"id":"auto","size":"L"}],"MATS:vast":[{"id":"buffer","size":"S"}]}');
 ok('oude gedeelde indeling genegeerd', JSON.stringify(L.fromShared({ MATS: [{ id: 'auto', size: 'L' }] })) === '{}');
 ok('eerlijkheid enkel bij SAMEN', !L.allowed('eerlijkheid', 'MATS') && L.allowed('eerlijkheid', 'SAMEN'));
 ok('ongeveer 20 widgets', L.CATALOG.length >= 19, L.CATALOG.length);
-const saved = L.parseSaved(JSON.stringify({ v: 3, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
+const saved = L.parseSaved(JSON.stringify({ v: 4, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
 ok('opgeslagen indeling opgeschoond', JSON.stringify(saved) === '[{"id":"inkomen","size":"L"},{"id":"buffer","size":"M"}]', JSON.stringify(saved));
 ok('kapotte of oude opslag geeft null', L.parseSaved('{kapot', 'MATS') === null && L.parseSaved(null, 'MATS') === null && L.parseSaved('{"v":2,"items":[]}', 'MATS') === null);
 ok('galerij toont wat op geen pagina staat', L.gallery(saved, 'MATS').every(w => w.id !== 'inkomen' && w.id !== 'buffer') && L.gallery(saved, 'MATS').some(w => w.id === 'auto') && !L.gallery(saved, 'MATS').some(w => w.id === 'eerlijkheid'));
 ok('verplaatsen', L.move([{ id: 'a' }, { id: 'b' }, { id: 'c' }], 0, 2).map(x => x.id).join('') === 'bca');
 ok('volgende grootte', L.nextSize('S') === 'M' && L.nextSize('L') === 'S');
 const sh = L.toShared(k => L.defaults(...k.split(':')));
-ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) === JSON.stringify(L.defaults('SAMEN', 'samen')) && sh.v === 3);
+ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) === JSON.stringify(L.defaults('SAMEN', 'samen')) && sh.v === 4);
 
 /* ---------- nieuwe berekeningen, verzonnen voorbeeld ---------- */
 {
   const tx = (Datum, Categorie, Bedrag, Tegenpartij, s = 1) => ({ Datum, Rekening_ID: 'X', Categorie, Bedrag, Aandeel_Mats: 0, Aandeel_Sofie: s, Eenmalig: 0, Tegenpartij, Omschrijving: '' });
   const d = { categorieen: [{ Categorie: 'Loon', Type: 'inkomen' }, { Categorie: 'Woonkost', Type: 'uitgave' }, { Categorie: 'Boodschappen', Type: 'uitgave' }, { Categorie: 'Reizen', Type: 'uitgave', Soort: 'nodig' }, { Categorie: 'Mobiliteit & parking', Type: 'uitgave' }, { Categorie: 'Sparen & investeren', Type: 'sparen' }],
     rekeningen: [{ Rekening_ID: 'X', Eigenaar: 'Sofie', Type: 'Zichtrekening' }], transacties: [], saldi: [],
-    potjes: [{ Naam: 'Eten', Categorieen: 'Boodschappen', Bedrag: 100, Wie: 'Sofie' }, { Naam: 'Weg', Categorieen: 'Reizen', Procent: '10%' }, { Naam: 'Mats', Categorieen: 'Reizen', Bedrag: 5, Wie: 'Mats' }],
-    beleggingen: [{ Datum: '2026-01-05', ETF: 'A', Soort: 'aankoop', Bedrag: 100, Aantal: 1, Wie: 'Sofie' }, { Datum: '2026-02-05', ETF: 'A', Soort: 'aankoop', Bedrag: 100, Aantal: 1, Wie: 'Sofie' }, { Datum: '2026-02-28', ETF: 'A', Soort: 'waarde', Bedrag: 230, Wie: 'Sofie' }] };
+    pockets: [{ Naam: 'Eten', Categorieen: 'Boodschappen', Bedrag: 100, Wie: 'Sofie' }, { Naam: 'Weg', Categorieen: 'Reizen', Bedrag: '87,5', Wie: 'Sofie' }, { Naam: 'Mats', Categorieen: 'Reizen', Bedrag: 5, Wie: 'Mats' }],
+    beleggingen: [{ Datum: '2026-01-31', Rekening_ID: 'SOFIE-EFFECTEN', Naam: 'A', ISIN: 'X1', Hoeveelheid: 1, Belegde_Waarde: 100, Huidige_Waarde: 101 },
+      { Datum: '2026-02-28', Rekening_ID: 'SOFIE-EFFECTEN', Naam: 'A', ISIN: 'X1', Hoeveelheid: 2, Belegde_Waarde: 200, Huidige_Waarde: 230 }] };
   ['2026-01', '2026-02', '2026-03', '2026-04'].forEach((m, i) => {
     d.transacties.push(tx(m + '-25', 'Loon', 1000, 'Werkgever'), tx(m + '-03', 'Woonkost', -500, 'Huisbaas'), tx(m + '-10', 'Boodschappen', -80 - i * 20, 'Winkel'));
   });
@@ -173,11 +174,13 @@ ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) ===
   ok('50/30/20: Soort-kolom wint (reizen = nodig)', Math.round(r5.nodig) === 876 && Math.round(r5.wens) === 0 && Math.round(r5.sparen) === 124, JSON.stringify(r5));
   const car = C.carCosts(rows);
   ok('auto: tanken en parking herkend', Math.round(car.perSoort['Brandstof en laden']) === 50 && Math.round(car.perSoort['Parkeren en tol']) === 6 && Math.round(car.totaal) === 56, JSON.stringify(car.perSoort));
-  const pj = C.pockets(cx, 'SOFIE', C.inPeriod(rows, '2026-03', '2026-03'), 1, rows, 4);
-  ok('potjes: eigen tabblad, niet die van Mats', !pj.voorstel && pj.list.length === 2, JSON.stringify(pj));
-  ok('potjes: bedrag en procent van inkomen', pj.list[0].budget === 100 && Math.round(pj.list[0].uitgegeven) === 120 && Math.round(pj.list[1].budget) === 100);
+  const pj = C.pockets(cx, 'SOFIE', C.inPeriod(rows, '2026-03', '2026-03'), 1);
+  ok('pockets: enkel die van Sofie', pj.length === 2, JSON.stringify(pj));
+  ok('pockets: bedrag (ook met komma) en uitgegeven', pj[0].budget === 100 && Math.round(pj[0].uitgegeven) === 120 && pj[1].budget === 87.5 && Math.round(pj[1].uitgegeven) === 200);
   const iv = C.investments(cx, 'SOFIE');
-  ok('ETF: ingelegd, waarde, rendement', iv.ingelegd === 200 && iv.waarde === 230 && Math.abs(iv.rendement - 0.15) < 1e-9 && iv.list[0].aantal === 2, JSON.stringify(iv));
+  ok('ETF: laatste momentopname, rendement, verloop', iv.ingelegd === 200 && iv.waarde === 230 && Math.abs(iv.rendement - 0.15) < 1e-9 && iv.list[0].aantal === 2 && iv.hist.length === 2 && iv.hist[0].v === 101, JSON.stringify(iv));
+  const fr = C.fire(10000, 500, 0.05, 100000, 60);
+  ok('FIRE: jaren tot doel', fr.jaren === 11 && fr.reeks[1].v === 10000 * 1.05 + 6000, fr.jaren);
   ok('ETF: niets voor Mats', C.investments(cx, 'MATS') === null);
 }
 
