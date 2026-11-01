@@ -423,7 +423,7 @@
   var CAR = [
     ['Brandstof en laden', /\b(total|totalenergies|q8|esso|shell|lukoil|dats ?24|texaco|gabriels|gulf|octa|aral|bp|allego|ionity|fastned|shell recharge|tankstation|tanken|brandstof)\b/],
     ['Onderhoud en herstel', /garage|toyota|volkswagen|peugeot|renault|kia|hyundai|skoda|carglass|autokeuring|keuring|banden|vulco|norauto|midas|carwash|car wash|autowas|\bvab\b|touring/],
-    ['Verzekering en taks', /autoverzekering|verzekering auto|omnium|verkeersbelasting|inschrijvingstaks|\bbiv\b|vlaamse belastingdienst|vlabel/],
+    ['Verzekering en taks', /autoverzekering|vivium|verzekering auto|omnium|verkeersbelasting|inschrijvingstaks|\bbiv\b|vlaamse belastingdienst|vlabel/],
     ['Parkeren en tol', /parking|parkeer|q ?park|interparking|indigo|seety|4411|tol |peage|vignet|arrive|stationnement/]
   ];
   function carKind(r) {
