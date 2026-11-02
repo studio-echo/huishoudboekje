@@ -494,6 +494,7 @@
       if (recKeys && recKeys[k]) kind = 'maandelijks';
       else if (!var_ && mk.length >= 3 && mk.every(function (m, i) { return !i || Math.abs(monthGap(mk[i - 1], m) - 3) <= 1; }) && similar(xs)) kind = 'kwartaal';
       else if (!var_ && YEARLY_RX.test(raw) && mk.length <= 2) kind = 'jaarlijks';
+      else if (xs.some(function (x) { return /jaarlijks|jaarabonnement|per jaar/i.test(String(x.r.Nota || '')); }) && mk.length <= 2) kind = 'jaarlijks';
       if (tot < 0) kind = 'los';
       out[kind] += tot; keys[k] = kind;
     });
@@ -615,13 +616,14 @@
   }
 
   /* ---------- soorten vaste kosten ---------- */
+  /* Mobiliteit eerst: 'AG Mobiliteit en Parkeren' (Antwerpse parkeerdienst) is geen verzekering */
   var FIXED_TYPES = [
+    ['Mobiliteit', /mobiliteit|parkeren|seety|nmbs|de lijn|velo/],
     ['Wonen en leningen', /woonkrediet|lening|hypothe|huur|syndic|krediet/],
     ['Verzekeringen', /verzeker|insurance|vivium|ethias|\bag\b|baloise|allianz|axa|dvv|laka|mutualiteit|helan|ziekenfonds/],
     ['Energie en water', /energie|engie|luminus|eneco|fluvius|water|farys|pidpa|de watergroep|elektric|gas\b|frank energie|bolt/],
     ['Telecom en internet', /proximus|telenet|orange|base\b|mobile vikings|scarlet|internet|gsm/],
     ['Abonnementen', /^$/],
-    ['Mobiliteit', /mobiliteit|parkeren|seety|nmbs|de lijn|velo/],
     ['Bank en administratie', /bank|fintro|bnp|kbc|belfius|ing\b|bijdrage|pakketkost|doccle|fod|spf|belasting/]
   ];
   function fixedType(r) {
@@ -630,6 +632,26 @@
     var s = norm(r.key + ' ' + r.naam + ' ' + r.cat);
     for (var i = 0; i < FIXED_TYPES.length; i++) if (FIXED_TYPES[i][1].test(s) && FIXED_TYPES[i][0] !== 'Abonnementen') return FIXED_TYPES[i][0];
     return r.cat === 'Woonkost' ? 'Wonen en leningen' : 'Andere';
+  }
+
+  /* ---------- verwachte vaste kosten per maand ---------- */
+  /* Voor de n maanden na 'from': elke maandelijkse vaste kost, de kwartaal- en jaarbetalingen in hun verwachte
+     maand, en vaste bedragen uit pockets (bv. de bijdrage aan de gezamenlijke rekening). */
+  function projection(rec, ups, extras, from, n) {
+    var out = [];
+    for (var i = 1; i <= n; i++) {
+      var m = addM(from, i), items = [];
+      rec.forEach(function (r) { if (r.loopt) items.push({ naam: r.naam, bedrag: r.perMaand, kind: 'maandelijks' }); });
+      (extras || []).forEach(function (x) { items.push({ naam: x.naam, bedrag: x.bedrag, kind: 'maandelijks' }); });
+      ups.forEach(function (u) {
+        var step = u.kind === 'kwartaal' ? 3 : 12, d = u.volgende;
+        while (d < m) d = addM(d, step);
+        if (d === m) items.push({ naam: u.naam, bedrag: u.bedrag, kind: u.kind });
+      });
+      items.sort(function (a, b) { return b.bedrag - a.bedrag; });
+      out.push({ m: m, items: items, totaal: items.reduce(function (a, x) { return a + x.bedrag; }, 0) });
+    }
+    return out;
   }
 
   /* ---------- wat komt eraan: kwartaal- en jaarbetalingen ---------- */
@@ -691,6 +713,6 @@
     counterparty: counterparty, incomeFlow: incomeFlow, byWeekday: byWeekday, buffer: buffer, notes: notes,
     hasOwnAccounts: hasOwnAccounts, cleanName: cleanName, jointIds: jointIds, median: median,
     frequency: frequency, fixedFree: fixedFree, rule503020: rule503020, needKind: needKind, carKind: carKind, carCosts: carCosts,
-    pockets: pockets, pocketList: pocketList, investments: investments, monthGap: monthGap, fixedType: fixedType, upcoming: upcoming, fire: fire, num: num_, ownerOfAccount: ownerOfAccount
+    pockets: pockets, pocketList: pocketList, investments: investments, monthGap: monthGap, fixedType: fixedType, upcoming: upcoming, projection: projection, fire: fire, num: num_, ownerOfAccount: ownerOfAccount
   };
 });

@@ -368,7 +368,7 @@ function pocketAction(a, t) {
 /* ---------- FIRE-instellingen ---------- */
 var FIRE_KEYS = [['GEBOORTEJAAR', 'Geboortejaar (bij Samen: van de oudste)', 'bv. 1995', ''], ['BARISTA_DOEL', 'Totaal vermogen nodig voor Barista FIRE', 'bv. 1370000', '€'], ['FIRE_DOEL', 'Totaal vermogen nodig voor volledige FIRE', 'leeg = 25 × je jaaruitgaven', '€'], ['RENDEMENT', 'Verwacht rendement na inflatie, % per jaar', '5', '%'],
   ['STARTVERMOGEN', 'Vermogen nu (spaarrekening + beleggingen + rekeningen)', 'leeg = ETF\'s + zichtrekening', '€'], ['INLEG', 'Inleg per maand', 'leeg = je gemiddelde spaarbedrag', '€'],
-  ['SPAARREKENING', 'Stand spaarrekening nu (voor het maandadvies)', 'bv. 8000', '€'], ['BUFFER_DOEL', 'Buffer op de spaarrekening', 'leeg = 3 maanden uitgaven', '€'], ['ETF_DEEL', 'Deel van het overschot naar ETF\'s, na de buffer', 'bv. 70', '%']];
+  ['SPAARREKENING', 'Stand spaarrekening nu (voor het maandadvies)', 'bv. 8000', '€'], ['ETF_PER_MAAND', 'Vaste inleg ETF\'s per maand', 'leeg = de inleg hierboven', '€']];
 function fireEditor() {
   var get = function (k) { var r = S.data.instellingen.filter(function (x) { return x.Sleutel === S.view + '.' + k; })[0]; return r ? r.Waarde : ''; };
   openSheet('FIRE en sparen voor ' + { MATS: 'Mats', SOFIE: 'Sofie', SAMEN: 'Samen' }[S.view], '<div class="fe">' + FIRE_KEYS.map(function (k) {

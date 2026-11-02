@@ -4,7 +4,7 @@
   else root.Layout = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-  var VERSION = 10, SIZES = ['S', 'M', 'L'], ROWS = 4;
+  var VERSION = 11, SIZES = ['S', 'M', 'L'], ROWS = 4;
   var ALL = ['MATS', 'SOFIE', 'SAMEN'];
 
   /* Pagina's om tussen te vegen. Elke standaardpagina vult precies 4 rijen van 4 kolommen (een iPad liggend). */
@@ -44,6 +44,7 @@
     { id: 'regel', naam: '50/30/20-regel', h: h(1, 1, 1), views: ALL },
     { id: 'vastsoort', naam: 'Vaste kosten per soort', h: h(2, 2, 2), views: ALL },
     { id: 'vastelasten', naam: 'Vaste kosten en abonnementen', h: h(2, 4, 4), views: ALL },
+    { id: 'verwacht', naam: 'Vaste kosten komende maanden', h: h(2, 2, 2), views: ALL },
     { id: 'komend', naam: 'Wat eraan komt', h: h(2, 2, 2), views: ALL },
     { id: 'auto', naam: 'Wat kost de auto', h: h(2, 2, 2), views: ['SOFIE'] },
     { id: 'vastvrij', naam: 'Vast versus vrij', h: h(2, 2, 2), views: ALL },
@@ -68,11 +69,11 @@
     inzichten: [['inzichten', 'L']],
     uitgaven: [['donut', 'M'], ['categorieen', 'M'], ['reizen', 'S'], ['eenmalig', 'S']],
     pockets: [['pockets', 'L']],
-    vast: [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'S'], ['auto', 'S']],
+    vast: [['vastsoort', 'M'], ['vastelasten', 'M'], ['verwacht', 'M']],
     /* Enkel Sofie heeft een auto; bij Mats en Samen krijgt Wat eraan komt die plaats. */
-    'MATS:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'S'], ['bijdrage', 'S']],
-    'SOFIE:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['auto', 'S'], ['bijdrage', 'S']],
-    'SAMEN:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'M']],
+    'MATS:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['verwacht', 'M']],
+    'SOFIE:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['verwacht', 'S'], ['auto', 'S']],
+    'SAMEN:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['verwacht', 'M']],
     sparen: [['advies', 'L'], ['spaarverloop', 'M'], ['beleggingen', 'M']],
     'SAMEN:sparen': [['spaarverloop', 'L'], ['beleggingen', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['opzij', 'M']],
     fire: [['fire', 'L'], ['fireinst', 'L']],

@@ -225,11 +225,11 @@ with sync_playwright() as pw:
 
     # 2b. gedeelde indeling uit het blad wint van wat op het toestel staat
     fx = json.load(open(os.path.join(ROOT, 'data', 'fixture.json')))
-    fx3 = dict(fx); fx3['indeling'] = {'v': 10, 'MATS:overzicht': [{'id': 'gemiddelde', 'size': 'L'}, {'id': 'inkomenflow', 'size': 'L'}]}
+    fx3 = dict(fx); fx3['indeling'] = {'v': 11, 'MATS:overzicht': [{'id': 'gemiddelde', 'size': 'L'}, {'id': 'inkomenflow', 'size': 'L'}]}
     errors = []
     ctx, page = new_page(b, 820, 1180, 'light', errors, fx3)
     page.goto(BASE + 'index.html?src=fixture'); page.wait_for_selector('#grid .w')
-    page.evaluate("() => { localStorage.setItem('hb_l4_MATS:overzicht', JSON.stringify({v:10,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS'); localStorage.removeItem('hb_page_MATS') }")
+    page.evaluate("() => { localStorage.setItem('hb_l4_MATS:overzicht', JSON.stringify({v:11,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS'); localStorage.removeItem('hb_page_MATS') }")
     page.reload(); page.wait_for_selector('#grid .w')
     ids = page.evaluate("() => [...document.querySelectorAll('#grid .w')].map(t => t.dataset.id)")
     if ids != ['gemiddelde', 'inkomenflow']: fails.append('gedeelde indeling niet gebruikt: ' + ','.join(ids))

@@ -446,3 +446,19 @@ body.fit #status .notes{position:absolute;right:var(--gut);z-index:25;max-width:
 /* Pockets: alle kaarten zichtbaar, namen mogen op twee regels */
 .pks{overflow:auto!important;grid-auto-rows:minmax(72px,auto)!important;max-height:none!important}
 .pkt{min-width:0}.pkt b{white-space:normal;overflow-wrap:anywhere;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* Maandadvies: drie stappen */
+.adv{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;flex:1;align-content:center}
+.adv li{display:flex;gap:10px;background:var(--card2);border-radius:14px;padding:12px 14px;border-top:4px solid var(--accent);min-width:0}
+.adv li.good{border-top-color:var(--pos)}.adv li.warn{border-top-color:var(--neg)}
+.adv i{font-style:normal;flex:none;width:24px;height:24px;border-radius:12px;display:grid;place-items:center;background:var(--accent);color:var(--on);font-size:12px;font-weight:800}
+.adv li.good i{background:var(--pos)}.adv li.warn i{background:var(--neg)}
+.adv b{display:block;font-size:22px;font-weight:750;letter-spacing:-.02em}.adv span{display:block;font-size:13px;font-weight:600}.adv small{display:block;font-size:12px;color:var(--muted);margin-top:2px;line-height:1.3}
+@container (max-width:560px){.adv{grid-template-columns:1fr}}
+/* Jaaroverzicht */
+.yrg .yrm{grid-column:span 4}.yrg .yrk{grid-column:span 2;grid-row:span 2}.yrg .yrb,.yrg .yrt{grid-column:span 2}
+.yrg{grid-template-rows:auto 1fr 1fr}
+.yrc{flex:1;min-height:90px;display:flex;gap:6px;align-items:stretch}.yrc div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;min-width:0}
+.yrc i{display:block;width:100%;max-width:34px;border-radius:6px 6px 2px 2px;background:color-mix(in srgb,var(--accent) 45%,var(--track))}.yrc .yb i{background:var(--accent)}
+.yrc span{font-size:11px;color:var(--muted)}.yrc .yb span{color:var(--ink);font-weight:700}
+.ixu .ixrk{flex:none}
+@container (max-width:760px){.yrg .yrm,.yrg .yrk,.yrg .yrb,.yrg .yrt{grid-column:1/-1;grid-row:auto}}
