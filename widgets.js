@@ -601,7 +601,7 @@ R.vermogen = function (M, size) {
   var leg = '<div class="wleg">' + w.parts.map(function (p, i) { return '<div><i style="background:' + (p.soort === 'rekening' && i % 2 ? 'color-mix(in srgb,var(--accent) 60%,var(--card))' : cols[p.soort]) + '"></i><span>' + esc(p.naam) + '</span><b>' + eur(p.v) + '</b></div>'; }).join('') + '</div>';
   var miss = w.missing.map(function (x) { return '<p class="nt">' + esc(x.naam) + ': ' + esc(x.tekst) + ' (' + eur(x.inleg) + '). Geef me de stand om die mee te tellen.</p>'; }).join('') +
     (M.view === 'SAMEN' ? '<p class="nt">Enkel de gezamenlijke rekening.</p>' : '');
-  return { title: title, body: '<div class="kpi kx"><div class="kv">' + eur(w.totaal) + '</div><div class="kl">' + (ch != null ? '<span class="' + (ch >= 0 ? 'pos' : 'neg') + '">' + (ch >= 0 ? '▲ ' : '▼ ') + eurAbs(ch) + '</span> op een maand' : 'geen stand de maand ervoor') + '</div></div>' + bar + leg + miss };
+  return { title: title, body: '<div class="kpi kx"><div class="kv">' + eur(w.totaal) + '</div><div class="kl">' + (ch != null ? '<span class="' + (ch >= 0 ? 'pos' : 'neg') + '">' + (ch >= 0 ? '▲ ' : '▼ ') + eurAbs(ch) + '</span> op een maand' + (w.naarSparen > 0.5 ? ' <small>(rekeningen ' + (w.verschilRekening >= 0 ? '+' : '−') + eurAbs(w.verschilRekening) + ', naar sparen en ETF\'s +' + eur(w.naarSparen) + ')</small>' : '') : 'geen stand de maand ervoor') + '</div></div>' + bar + leg + miss };
 };
 
 /* Bijdragen aan de gezamenlijke rekening: jaar tot nu en de laatste 3 maanden */
@@ -707,7 +707,7 @@ R.regel = function (M, size) {
   var e = needOwn(M); if (e) return { title: '50/30/20-regel', body: empty(e) };
   var r = C.rule503020(M.ctx, M.rows), inc = r.inkomen;
   if (inc <= 0) return { title: 'Geen inkomen ' + M.when, body: empty('De regel vergelijkt met je inkomen.') };
-  var parts = [['nodig', 'Nodig', r.nodig, 0.5], ['wens', 'Wensen', r.wens, 0.3], ['sparen', 'Sparen en over', r.sparen, 0.2]];
+  var parts = [['nodig', 'Nodig', r.nodig, 0.5], ['wens', 'Wensen', r.wens, 0.3], ['sparen', 'Niet uitgegeven', r.sparen, 0.2]];
   var worst = parts.slice().sort(function (a, b) { return Math.abs(b[2] / inc - b[3]) - Math.abs(a[2] / inc - a[3]); })[0], off = worst[2] / inc - worst[3];
   var title = Math.abs(off) < 0.05 ? '50/30/20: ' + J(M, 'je zit', 'jullie zitten') + ' er dicht bij' : '50/30/20: ' + worst[1].toLowerCase() + ' ' + pct(Math.max(0, worst[2]) / inc, 0) + ' van ' + J(M, 'je', 'jullie') + ' inkomen, richtlijn ' + pct(worst[3], 0);
   return { title: title, body: '<div class="rule row">' + parts.map(function (p) {
@@ -774,7 +774,7 @@ R.inzichten = function (M, size) {
   /* 4. grootste losse uitgaven */
   var big = C.largest(loose(M).filter(function (x) { return !noise(x.r.Categorie); }), 3), bmx = big.length ? big[0].bedrag : 1;
   var bgHtml = big.length ? '<ul class="ixb">' + big.map(function (b, i) {
-    return '<li><div class="ixl"><span><i class="rk">' + (i + 1) + '</i>' + esc(b.naam) + '<small>' + dNice(b.datum) + ' · ' + esc(b.cat) + '</small></span><b>' + eur(b.bedrag) + '</b></div><div class="ixbar"><i class="in" style="width:' + (b.bedrag / bmx * 100).toFixed(1) + '%"></i></div></li>';
+    return '<li><div class="ixl"><span><i class="ixrk">' + (i + 1) + '</i>' + esc(b.naam) + '<small>' + dNice(b.datum) + ' · ' + esc(b.cat) + '</small></span><b>' + eur(b.bedrag) + '</b></div><div class="ixbar"><i class="in" style="width:' + (b.bedrag / bmx * 100).toFixed(1) + '%"></i></div></li>';
   }).join('') + '</ul>' : '<div class="ixok">Geen losse uitgaven</div>';
   /* 5. komt eraan */
   var lc = M.dq.lastComplete, next = C.addM(M.P.to > lc ? lc : M.P.to, 1);

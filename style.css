@@ -429,7 +429,7 @@ body.fit #status .notes{position:absolute;right:var(--gut);z-index:25;max-width:
 .ixl{display:flex;justify-content:space-between;gap:8px;font-size:13px;align-items:baseline}.ixl span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ixl small{display:block;font-size:11px;color:var(--muted)}.ixl b{white-space:nowrap}
 .ixbar{height:8px;border-radius:4px;background:var(--track);display:flex;overflow:hidden}.ixbar i{display:block;height:100%;flex:none}.ixbar .in{background:var(--accent)}.ixbar .ov{background:var(--neg)}
 .ixbig .ixbar .in{background:color-mix(in srgb,var(--accent) 55%,var(--track))}
-.rk{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:9px;background:var(--accent);color:var(--on);font-style:normal;font-size:11px;font-weight:700;margin-right:6px;vertical-align:1px}
+.ixrk{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:9px;background:var(--accent);color:var(--on);font-style:normal;font-size:11px;font-weight:700;margin-right:6px;vertical-align:1px}
 .ixd li{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px;min-height:28px}.ixd .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ixd .track{position:relative;height:8px;background:var(--track);border-radius:4px}.ixd .track::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1.5px;background:var(--muted);opacity:.5}
 .ixd .track i{position:absolute;top:0;bottom:0;border-radius:4px}.ixd .track i.up{left:50%;background:var(--neg)}.ixd .track i.dn{right:50%;background:var(--pos)}.ixd b{white-space:nowrap;min-width:56px;text-align:right}
@@ -442,3 +442,7 @@ body.fit #status .notes{position:absolute;right:var(--gut);z-index:25;max-width:
 @container (max-width:480px){.ixg{grid-template-columns:1fr}.ixp,.ixc,.ixbig,.ixn,.ixt2{grid-column:1/-1}.ixhero{flex-direction:column;align-items:flex-start}.ixa{grid-template-columns:1fr}}
 .ixb,.ixu{grid-template-columns:minmax(0,1fr)}.ixs b span{font-size:inherit;color:inherit}.ixs b span.neg{color:var(--neg)}
 .ixl{min-width:0}.ixl>span{overflow:hidden}.ixl small{overflow:hidden;text-overflow:ellipsis}
+
+/* Pockets: alle kaarten zichtbaar, namen mogen op twee regels */
+.pks{overflow:auto!important;grid-auto-rows:minmax(72px,auto)!important;max-height:none!important}
+.pkt{min-width:0}.pkt b{white-space:normal;overflow-wrap:anywhere;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}

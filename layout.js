@@ -4,20 +4,21 @@
   else root.Layout = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-  var VERSION = 9, SIZES = ['S', 'M', 'L'], ROWS = 4;
+  var VERSION = 10, SIZES = ['S', 'M', 'L'], ROWS = 4;
   var ALL = ['MATS', 'SOFIE', 'SAMEN'];
 
   /* Pagina's om tussen te vegen. Elke standaardpagina vult precies 4 rijen van 4 kolommen (een iPad liggend). */
+  /* Volgorde: eerst het geheel, dan wat er deze maand gebeurde, dan budget en details, en tot slot de lange termijn. */
   var PAGES = [
     { id: 'overzicht', naam: 'Overzicht', views: ALL },
     { id: 'inzichten', naam: 'Inzichten', views: ALL },
-    { id: 'uitgaven', naam: 'Uitgaven', views: ALL },
     { id: 'pockets', naam: 'Pockets', views: ALL },
+    { id: 'uitgaven', naam: 'Uitgaven', views: ALL },
     { id: 'vast', naam: 'Vaste kosten', views: ALL },
+    { id: 'samen', naam: 'Samen', views: ['SAMEN'] },
     { id: 'sparen', naam: 'Sparen', views: ALL },
     { id: 'fire', naam: 'FIRE', views: ALL },
-    { id: 'jaar', naam: 'Jaaroverzicht', views: ALL },
-    { id: 'samen', naam: 'Samen', views: ['SAMEN'] }
+    { id: 'jaar', naam: 'Jaaroverzicht', views: ALL }
   ];
 
   /* h = hoogte in rijen per grootte. Breedte: S = kwart, M = half, L = volledig (op een gsm: S = half). */
@@ -39,7 +40,7 @@
     { id: 'categorieen', naam: 'Categorieën tegenover gewoonlijk', h: h(2, 4, 4), views: ALL },
     { id: 'winkels', naam: 'Waar je het meest uitgaf', h: h(2, 2, 2), views: ALL },
     { id: 'eenmalig', naam: 'Grootste losse uitgaven', h: h(2, 2, 2), views: ALL },
-    { id: 'pockets', naam: 'Pockets', h: h(2, 3, 3), views: ALL },
+    { id: 'pockets', naam: 'Pockets', h: h(2, 3, 4), views: ALL },
     { id: 'regel', naam: '50/30/20-regel', h: h(1, 1, 1), views: ALL },
     { id: 'vastsoort', naam: 'Vaste kosten per soort', h: h(2, 2, 2), views: ALL },
     { id: 'vastelasten', naam: 'Vaste kosten en abonnementen', h: h(2, 4, 4), views: ALL },
@@ -63,10 +64,10 @@
   CATALOG.forEach(function (w) { BY_ID[w.id] = w; });
 
   var D = {
-    overzicht: [['vermogen', 'M'], ['verloop', 'M'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gespaard', 'S'], ['spaarratio', 'S'], ['prognose', 'M'], ['veranderingen', 'M']],
+    overzicht: [['vermogen', 'M'], ['verloop', 'M'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gespaard', 'S'], ['spaarratio', 'S'], ['prognose', 'M'], ['regel', 'M']],
     inzichten: [['inzichten', 'L']],
     uitgaven: [['donut', 'M'], ['categorieen', 'M'], ['reizen', 'S'], ['eenmalig', 'S']],
-    pockets: [['pockets', 'L'], ['regel', 'L']],
+    pockets: [['pockets', 'L']],
     vast: [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'S'], ['auto', 'S']],
     /* Enkel Sofie heeft een auto; bij Mats en Samen krijgt Wat eraan komt die plaats. */
     'MATS:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'S'], ['bijdrage', 'S']],
@@ -76,11 +77,11 @@
     'SAMEN:sparen': [['spaarverloop', 'L'], ['beleggingen', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['opzij', 'M']],
     fire: [['fire', 'L'], ['fireinst', 'L']],
     jaar: [['jaaroverzicht', 'L']],
-    samen: [['gedeeld', 'M'], ['vastvrij', 'M'], ['veranderingen', 'L']],
+    samen: [['gedeeld', 'M'], ['vastvrij', 'M'], ['winkels', 'L']],
     /* Samen = de gemeenschappelijke pot, geen optelsom: niets wordt samen gespaard, dus geen spaartegels of 50/30/20. */
     /* Samen: geen inkomen (stortingen zijn neutraal); de bijdragen staan groot op het overzicht */
     'SAMEN:overzicht': [['vermogen', 'M'], ['verloop', 'M'], ['bijdrage', 'L']],
-    'SAMEN:pockets': [['pockets', 'L'], ['buffer', 'L']]
+    'SAMEN:pockets': [['pockets', 'L']]
   };
 
   function pages(view) { return PAGES.filter(function (p) { return p.views.indexOf(view) >= 0; }); }

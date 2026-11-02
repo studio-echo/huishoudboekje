@@ -415,7 +415,14 @@
     var hasSav = parts.some(function (p) { return p.soort === 'sparen'; });
     if (inleg > 0.5 && !hasSav) missing.push({ naam: 'Spaarrekening', tekst: 'geen saldo in het blad, enkel stortingen bekend', inleg: inleg });
     var tot = parts.reduce(function (a, p) { return a + p.v; }, 0), withPrev = parts.filter(function (p) { return p.vorig != null; });
-    return { parts: parts, missing: missing, totaal: tot, verschil: withPrev.length ? withPrev.reduce(function (a, p) { return a + p.v - p.vorig; }, 0) : null, zonderVorig: parts.length - withPrev.length };
+    /* Verschil op een maand: verandering van de onderdelen met een vorige stand, plus wat deze maand naar sparen of
+       beleggen ging als die onderdelen (spaarrekening, ETF's) geen vorige stand hebben. Anders lijkt geld dat je
+       overzet naar sparen een verlies. Koersschommelingen van ETF's zonder vorige stand tellen dan niet mee. */
+    var rek = withPrev.reduce(function (a, p) { return a + p.v - p.vorig; }, 0), naarSparen = 0;
+    var gaps = missing.length > 0 || parts.some(function (p) { return p.soort !== 'rekening' && p.vorig == null; });
+    if (gaps) rowsFor(ctx, view).forEach(function (x) { if (x.t === 'sparen' && x.m === end.slice(0, 7)) naarSparen -= x.a; });
+    return { parts: parts, missing: missing, totaal: tot, verschilRekening: rek, naarSparen: naarSparen,
+      verschil: withPrev.length ? rek + naarSparen : null, zonderVorig: parts.length - withPrev.length };
   }
 
   /* ---------- reizen ---------- */
