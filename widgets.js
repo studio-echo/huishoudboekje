@@ -695,7 +695,7 @@ R.pockets = function (M, size) {
   var cards = ps.map(function (p) {
     var r = p.budget ? Math.max(0, p.uitgegeven) / p.budget : 0, over = p.uitgegeven > p.budget + 0.5, left = p.budget - p.uitgegeven;
     return '<button class="pk' + (over ? ' over' : '') + '" data-dd="pk:' + encodeURIComponent(p.cats.join('|')) + '">' + ringSmall(r, over) +
-      '<span class="pkt"><b>' + esc(p.naam) + '</b>' + (p.cats.length > 1 || p.cats[0].toLowerCase().indexOf(p.naam.toLowerCase().split(' ')[0]) < 0 ? '<small>' + esc(p.cats.join(', ')) + '</small>' : '')<span>' + (p.uitgegeven < 0 ? eur(0) + ' (' + eurAbs(p.uitgegeven) + ' terug)' : eur(p.uitgegeven)) + ' van ' + eur(p.budget) + (p.jaar ? ' in ' + yr : '') + '</span><span class="' + (over ? 'neg' : 'pos') + '">' + (over ? eurAbs(left) + ' over budget' : 'nog ' + eur(left)) + '</span></span></button>';
+      '<span class="pkt"><b>' + esc(p.naam) + '</b>' + (p.cats.length > 1 || p.cats[0].toLowerCase().indexOf(p.naam.toLowerCase().split(' ')[0]) < 0 ? '<small>' + esc(p.cats.join(', ')) + '</small>' : '') + '<span>' + (p.uitgegeven < 0 ? eur(0) + ' (' + eurAbs(p.uitgegeven) + ' terug)' : eur(p.uitgegeven)) + ' van ' + eur(p.budget) + (p.jaar ? ' in ' + yr : '') + '</span><span class="' + (over ? 'neg' : 'pos') + '">' + (over ? eurAbs(left) + ' over budget' : 'nog ' + eur(left)) + '</span></span></button>';
   }).join('');
   /* per maand: alles in pockets samen tegenover het totale budget */
   var mcov = {}; ps.forEach(function (p) { if (!p.jaar) p.cats.forEach(function (c) { mcov[c] = 1; }); });
