@@ -4,7 +4,7 @@
   else root.Layout = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-  var VERSION = 7, SIZES = ['S', 'M', 'L'], ROWS = 4;
+  var VERSION = 8, SIZES = ['S', 'M', 'L'], ROWS = 4;
   var ALL = ['MATS', 'SOFIE', 'SAMEN'];
 
   /* Pagina's om tussen te vegen. Elke standaardpagina vult precies 4 rijen van 4 kolommen (een iPad liggend). */
@@ -24,6 +24,7 @@
   var CATALOG = [
     { id: 'vermogen', naam: 'Vermogen', h: h(2, 2, 2), views: ALL },
     { id: 'verloop', naam: 'Resultaat per maand', h: h(1, 2, 2), views: ALL },
+    { id: 'advies', naam: 'Maandadvies sparen', h: h(2, 2, 2), views: ['MATS', 'SOFIE'] },
     { id: 'bijdrage', naam: 'Bijdragen gezamenlijke rekening', h: h(2, 2, 2), views: ALL },
     { id: 'reizen', naam: 'Reizen dit jaar', h: h(2, 2, 2), views: ALL },
     { id: 'inkomen', naam: 'Inkomen', h: h(1, 1, 1), views: ALL },
@@ -68,7 +69,8 @@
     'MATS:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'S'], ['bijdrage', 'S']],
     'SOFIE:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['auto', 'S'], ['bijdrage', 'S']],
     'SAMEN:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'M']],
-    sparen: [['spaarverloop', 'L'], ['beleggingen', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['opzij', 'M']],
+    sparen: [['advies', 'L'], ['spaarverloop', 'M'], ['beleggingen', 'M']],
+    'SAMEN:sparen': [['spaarverloop', 'L'], ['beleggingen', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['opzij', 'M']],
     fire: [['fire', 'L'], ['fireinst', 'L']],
     jaar: [['jaaroverzicht', 'L']],
     samen: [['gedeeld', 'M'], ['vastvrij', 'M'], ['veranderingen', 'L']],

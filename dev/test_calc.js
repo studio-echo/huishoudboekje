@@ -16,21 +16,19 @@ else {
   if (d.error) { console.log('FAIL fixture bevat een fout: ' + d.error); process.exit(1); }
   const ctx = C.makeCtx(d), rows = C.rowsFor(ctx, 'MATS');
   const s = C.metrics(C.inPeriod(rows, '2026-09', '2026-09'));
-  eq('sep inkomen', s.inkomen, 3540.37); eq('sep uitgaven', s.uitgaven, -2820.725); eq('sep resultaat', s.resultaat, 319.645);
-  eq('sep gespaard', s.gespaard, 400); eq('sep spaarratio', r1(s.spaarratio), 11.3);
-  /* De YTD-referentie werd berekend op de migratie uit v14 (Transactie_ID MIG-...). Sindsdien voegde de agent
-     januari en februari aan. Op diezelfde rijen moet de berekening exact blijven kloppen. */
-  const mig = C.rowsFor(ctx, 'MATS', r => String(r.Transactie_ID).indexOf('MIG-') === 0);
-  const y = C.metrics(C.inPeriod(mig, '2026-01', '2026-12'));
-  eq('ytd inkomen (v14-rijen)', y.inkomen, 23310.12); eq('ytd uitgaven', y.uitgaven, -22675.73); eq('ytd resultaat', y.resultaat, -561.61);
-  eq('ytd structureel', y.structureel, 1046.775); eq('ytd gespaard', y.gespaard, 1196);
-  eq('ytd spaarratio', r1(y.spaarratio), 5.1); eq('ytd overschotratio', r1(y.overschot), 2.7);
+  /* Persoonlijk = enkel eigen rekeningen; onafhankelijk nagerekend op de ruwe rijen */
+  const own = {}; d.rekeningen.forEach(a => { own[a.Rekening_ID] = a.Eigenaar; });
+  const typ = {}; d.categorieen.forEach(c => { typ[c.Categorie] = String(c.Type).toLowerCase(); });
+  let exp = 0; d.transacties.forEach(r => { if (own[r.Rekening_ID] !== 'Mats' || String(r.Datum).slice(0, 7) !== '2026-09') return;
+    if (typ[r.Categorie] === 'uitgave' || (r.Categorie === 'Overdracht gezamenlijke rekening' && r.Bedrag < 0)) exp += r.Bedrag; });
+  eq('sep uitgaven = eigen rekeningen + bijdrage gezamenlijk', s.uitgaven, exp);
+  ok('geen gezamenlijke rekening in persoonlijke rijen', rows.every(x => own[x.r.Rekening_ID] === 'Mats'));
   const dq = C.dataQuality(ctx);
   ok('laatste volledige maand is de laatste maand met gegevens', dq.lastComplete === '2026-10', dq.lastComplete);
   ok('kredietkaart en Revolut nooit "verouderd"', dq.stale.every(x => !/krediet|revolut/i.test(x)), dq.stale.join(','));
-  const rec = C.recurring(C.inPeriod(rows, '2026-03', '2026-09'), 3, '2026-09'), key = k => rec.filter(r => r.key === k)[0];
+  const rec = C.recurring(C.inPeriod(rows, '2026-03', '2026-09'), 3, '2026-09').concat(C.recurring(C.inPeriod(C.rowsFor(ctx, 'SAMEN'), '2026-03', '2026-09'), 3, '2026-09')), key = k => rec.filter(r => r.key === k)[0];
   ok('woonkrediet herkend als lening', key('woonkrediet') && key('woonkrediet').lening);
-  ok('lening vader los van de fiets', key('lening vader') && key('lening fiets') && Math.round(key('lening vader').perMaand) === 100 && key('lening fiets').perMaand === 150);
+  ok('lening vader los van de fiets', key('lening vader') && key('lening fiets') && Math.round(key('lening vader').perMaand) === 200 && key('lening fiets').perMaand === 150);
   ok('fietslening is afgelopen in september', key('lening fiets') && key('lening fiets').laatste === '2026-08');
   const f = C.fairness(ctx, '2026-03', '2026-09');
   ok('alle stortingen op de gezamenlijke rekening toegewezen', f.stortingen['?'] === 0, f.stortingen['?']);
@@ -88,11 +86,11 @@ const dq2 = C.dataQuality(C.makeCtx(Object.assign({}, data, { rekeningen: rek.ma
 ok('kredietkaart met Gebruik=maandelijks wordt wel gemeld', dq2.stale.length === 1 && /krediet/i.test(dq2.stale[0]), dq2.stale.join());
 
 const rm = C.rowsFor(ctx, 'MATS'), sep = C.metrics(C.inPeriod(rm, '2026-09', '2026-09'));
-eq('metrics inkomen', sep.inkomen, 3000); eq('metrics uitgaven', sep.uitgaven, -(500 + 10 + 100 + 150 + 2.5 + 2000));
+eq('metrics inkomen', sep.inkomen, 3000); eq('metrics uitgaven: eigen rekening + bijdrage gezamenlijk', sep.uitgaven, -(10 + 100 + 800 + 2000));
 eq('metrics gespaard', sep.gespaard, 300); eq('structureel zonder eenmalig', sep.structureel, sep.resultaat + 2000);
 eq('inkomen structureel', sep.inkomenStructureel, 3000);
-const rec = C.recurring(C.inPeriod(rm, '2026-05', '2026-09'), 3, '2026-09'), k = x => rec.filter(r => r.key === x)[0];
-ok('woonkrediet terugkerend, lening', k('woonkrediet') && k('woonkrediet').lening && k('woonkrediet').perMaand === 500);
+const rec = C.recurring(C.inPeriod(rm, '2026-05', '2026-09'), 3, '2026-09').concat(C.recurring(C.inPeriod(C.rowsFor(ctx, 'SAMEN'), '2026-05', '2026-09'), 3, '2026-09')), k = x => rec.filter(r => r.key === x)[0];
+ok('woonkrediet terugkerend bij Samen, lening', k('woonkrediet') && k('woonkrediet').lening && k('woonkrediet').perMaand === 1000);
 ok('apple abonnement over twee namen', k('apple') && k('apple').abonnement && k('apple').maanden === 5);
 ok('boodschappen nooit vaste last', !rec.some(r => r.cat === 'Boodschappen'));
 ok('fiets afgelopen maar nog in lijst (actief tot vorige maand)', k('lening fiets') && k('lening fiets').laatste === '2026-08' && k('lening fiets').actief);
@@ -111,10 +109,11 @@ eq('eerlijkheid: saldo Mats', fr.saldo.MATS, 4000 - 5 * 652.5);
 ok('eerlijkheid: kredietkaart telt niet mee', fr.kosten === 5 * 1305);
 
 const b = C.buffer(ctx, 'MATS', '2026-09', 3);
-eq('buffer: laatste saldo + helft gezamenlijk', b.saldo, 3500);
-ok('buffer: snapshotdatum is de oudste van de laatste standen', b.datum === '2026-09-28' && b.tot === '2026-09-30');
-eq('buffer: maanden = saldo / gemiddelde uitgaven zonder eenmalig', b.maanden, 3500 / b.perMaand);
-ok('buffer: Sofie zonder eigen saldo gebruikt enkel de helft van gezamenlijk', C.buffer(ctx, 'SOFIE', '2026-09').saldo === 500);
+eq('buffer: enkel eigen rekening', b.saldo, 3000);
+ok('buffer: snapshotdatum', b.datum === '2026-09-28');
+eq('buffer: maanden = saldo / gemiddelde uitgaven zonder eenmalig', b.maanden, 3000 / b.perMaand);
+ok('buffer: Sofie zonder eigen saldo heeft geen buffer', C.buffer(ctx, 'SOFIE', '2026-09') === null);
+ok('loon na de 15de telt voor de volgende maand', C.rowsFor(ctx, 'MATS').filter(x => x.t === 'inkomen' && x.r.Datum === '2026-05-25')[0].m === '2026-06');
 
 const wd = C.byWeekday(C.inPeriod(rm, '2026-09', '2026-09'));
 ok('weekdag: 7 dagen, maandag eerst', wd.length === 7 && wd[0].dag === 0);
@@ -135,18 +134,18 @@ const V3 = (v, p) => L.defaults(v, p);
 }));
 ok('MATS en SOFIE zelfde pagina\'s, auto enkel bij Sofie', JSON.stringify(L.pages('MATS').map(p => p.id)) === JSON.stringify(L.pages('SOFIE').map(p => p.id)) && !L.defaults('MATS', 'vast').some(x => x.id === 'auto') && L.defaults('SOFIE', 'vast').some(x => x.id === 'auto'));
 ok('pagina Samen enkel bij SAMEN, FIRE overal', L.pages('MATS').length === 7 && L.pages('SAMEN').length === 8 && L.pages('SAMEN').some(p => p.id === 'fire'));
-ok('gedeelde indeling opgeschoond, geen dubbels over pagina\'s', JSON.stringify(L.fromShared({ v: 7, 'MATS:overzicht': [{ id: 'inkomenflow', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], 'MATS:vast': [{ id: 'inkomenflow', size: 'S' }, { id: 'buffer', size: 'S' }] })) === '{"MATS:overzicht":[{"id":"inkomenflow","size":"L"}],"MATS:vast":[{"id":"buffer","size":"S"}]}');
+ok('gedeelde indeling opgeschoond, geen dubbels over pagina\'s', JSON.stringify(L.fromShared({ v: 8, 'MATS:overzicht': [{ id: 'inkomenflow', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], 'MATS:vast': [{ id: 'inkomenflow', size: 'S' }, { id: 'buffer', size: 'S' }] })) === '{"MATS:overzicht":[{"id":"inkomenflow","size":"L"}],"MATS:vast":[{"id":"buffer","size":"S"}]}');
 ok('oude gedeelde indeling genegeerd', JSON.stringify(L.fromShared({ MATS: [{ id: 'auto', size: 'L' }] })) === '{}');
 ok('eerlijkheid enkel bij SAMEN', !L.allowed('eerlijkheid', 'MATS') && L.allowed('eerlijkheid', 'SAMEN'));
 ok('ongeveer 20 widgets', L.CATALOG.length >= 19, L.CATALOG.length);
-const saved = L.parseSaved(JSON.stringify({ v: 7, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
+const saved = L.parseSaved(JSON.stringify({ v: 8, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
 ok('opgeslagen indeling opgeschoond', JSON.stringify(saved) === '[{"id":"inkomen","size":"L"},{"id":"buffer","size":"M"}]', JSON.stringify(saved));
 ok('kapotte of oude opslag geeft null', L.parseSaved('{kapot', 'MATS') === null && L.parseSaved(null, 'MATS') === null && L.parseSaved('{"v":2,"items":[]}', 'MATS') === null);
 ok('galerij toont wat op geen pagina staat', L.gallery(saved, 'MATS').every(w => w.id !== 'inkomen' && w.id !== 'buffer') && L.gallery(saved, 'MATS').some(w => w.id === 'inkomenflow') && !L.gallery(saved, 'MATS').some(w => w.id === 'eerlijkheid'));
 ok('verplaatsen', L.move([{ id: 'a' }, { id: 'b' }, { id: 'c' }], 0, 2).map(x => x.id).join('') === 'bca');
 ok('volgende grootte', L.nextSize('S') === 'M' && L.nextSize('L') === 'S');
 const sh = L.toShared(k => L.defaults(...k.split(':')));
-ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) === JSON.stringify(L.defaults('SAMEN', 'samen')) && sh.v === 7);
+ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) === JSON.stringify(L.defaults('SAMEN', 'samen')) && sh.v === 8);
 
 /* ---------- nieuwe berekeningen, verzonnen voorbeeld ---------- */
 {
@@ -209,7 +208,7 @@ ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) ===
   ok('reis uit Nota', JSON.stringify(C.trips(C.rowsFor(cx, 'MATS'))) === '[{"naam":"Barcelona maart 2026","bedrag":1200,"aantal":1}]');
   ok('CHECK geteld', C.checkRows(C.rowsFor(cx, 'MATS')).length === 1);
   const w = C.wealth(cx, 'MATS');
-  ok('vermogen: eigen + helft gezamenlijk, verschil met vorige maand', w.totaal === 1450.5 && w.verschil === 250.5 && w.zonderVorig === 1, JSON.stringify(w));
+  ok('vermogen: enkel eigen rekening, verschil met vorige maand', w.totaal === 1250.5 && w.verschil === 250.5, JSON.stringify(w));
 }
 
 console.log('\n' + (n - fail) + '/' + n + ' geslaagd');

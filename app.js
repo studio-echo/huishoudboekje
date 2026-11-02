@@ -53,6 +53,8 @@ function setData(d, src) {
   var L0 = S.dq.lastComplete, ms = S.dq.months, first = CFG.EERSTE_VOLLEDIGE_MAAND || ms[0];
   if (!L0) fail('Er zijn nog geen volledige maanden in het blad.');
   if (first > L0 || first < ms[0]) first = ms[0] > L0 ? L0 : ms[0];
+  /* Met verschoven loon heeft de eerste maand geen loon van de maand ervoor in het blad: begin een maand later */
+  if (S.ctx.loonVerschuiven && first === ms[0] && C.addM(first, 1) <= L0) first = C.addM(first, 1);
   S.V = C.range(first, L0);
   S.Months = C.range(first, ms[ms.length - 1] > L0 ? ms[ms.length - 1] : L0);
   if (!S.month || S.Months.indexOf(S.month) < 0) S.month = L0;
@@ -321,21 +323,22 @@ document.addEventListener('keydown', function (e) {
 
 /* ---------- pockets bewerken ---------- */
 var PE = null;
-function expenseCats() { return S.data.categorieen.filter(function (c) { return String(c.Type).toLowerCase() === 'uitgave'; }).map(function (c) { return c.Categorie; }); }
+function expenseCats() { var l = S.data.categorieen.filter(function (c) { return String(c.Type).toLowerCase() === 'uitgave'; }).map(function (c) { return c.Categorie; }); if (S.view !== 'SAMEN') l.push('Bijdrage gezamenlijke rekening'); return l; }
 function pocketEditor() {
   var who = { MATS: 'Mats', SOFIE: 'Sofie', SAMEN: 'Samen' }[S.view];
   PE = S.data.pockets.filter(function (p) { var w = String(p.Wie || '').toUpperCase().trim(); return w === S.view || (!w && S.view === 'SAMEN'); })
-    .map(function (p) { return { Naam: p.Naam, Bedrag: C.num(p.Bedrag), cats: String(p.Categorieen || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean) }; });
-  if (!PE.length) PE.push({ Naam: '', Bedrag: '', cats: [] });
+    .map(function (p) { return { Naam: p.Naam, Bedrag: C.num(p.Bedrag), Periode: /jaar/i.test(String(p.Periode || '')) ? 'Jaar' : 'Maand', cats: String(p.Categorieen || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean) }; });
+  if (!PE.length) PE.push({ Naam: '', Bedrag: '', Periode: 'Maand', cats: [] });
   openSheet('Pockets van ' + who, '<div id="pe"></div>');
   drawPE();
 }
 function drawPE() {
   var cats = expenseCats();
-  $('#pe').innerHTML = '<p class="nt">Een pocket is een budget per maand. Kies de categorieën die erin vallen. Een categorie hoort bij hoogstens één pocket.</p>' +
+  $('#pe').innerHTML = '<p class="nt">Een pocket is een budget per maand of per jaar (bv. Reizen). Kies de categorieën die erin vallen. Een categorie hoort bij hoogstens één pocket.</p>' +
     PE.map(function (p, i) {
       return '<div class="pec"><div class="per"><input data-pi="' + i + ':Naam" value="' + esc(p.Naam) + '" placeholder="Naam, bv. Boodschappen" aria-label="Naam pocket" maxlength="40">' +
-        '<input data-pi="' + i + ':Bedrag" value="' + esc(p.Bedrag) + '" inputmode="decimal" placeholder="€ per maand" aria-label="Bedrag per maand" class="amt">' +
+        '<input data-pi="' + i + ':Bedrag" value="' + esc(p.Bedrag) + '" inputmode="decimal" placeholder="€" aria-label="Bedrag" class="amt">' +
+        '<button class="eb per" data-pe="per:' + i + '" aria-label="Periode wisselen">per ' + (p.Periode === 'Jaar' ? 'jaar' : 'maand') + '</button>' +
         '<button class="eb rm" data-pe="del:' + i + '" aria-label="Verwijder pocket">−</button></div>' +
         '<div class="pcats">' + cats.map(function (c) { return '<button data-pe="cat:' + i + ':' + esc(c) + '" aria-pressed="' + (p.cats.indexOf(c) >= 0) + '">' + esc(c) + '</button>'; }).join('') + '</div></div>';
     }).join('') + '<p class="err" id="peerr" role="alert"></p><div class="gf"><button class="btn" data-pe="add">+ Pocket</button><button class="btn pri" data-pe="save">Bewaar</button></div>';
@@ -344,7 +347,8 @@ function readPE() { $$('[data-pi]').forEach(function (el) { var q = el.dataset.p
 function pocketAction(a, t) {
   readPE();
   var q = a.split(':');
-  if (q[0] === 'add') PE.push({ Naam: '', Bedrag: '', cats: [] });
+  if (q[0] === 'add') PE.push({ Naam: '', Bedrag: '', Periode: 'Maand', cats: [] });
+  else if (q[0] === 'per') PE[+q[1]].Periode = PE[+q[1]].Periode === 'Jaar' ? 'Maand' : 'Jaar';
   else if (q[0] === 'del') PE.splice(+q[1], 1);
   else if (q[0] === 'cat') {
     var p = PE[+q[1]], c = q.slice(2).join(':'), i = p.cats.indexOf(c);
@@ -354,7 +358,7 @@ function pocketAction(a, t) {
     if (bad) { $('#peerr').textContent = 'Elke pocket heeft een naam, een bedrag groter dan 0 en minstens één categorie nodig.'; return; }
     var wie = { MATS: 'Mats', SOFIE: 'Sofie', SAMEN: 'Samen' }[S.view];
     var others = S.data.pockets.filter(function (p) { var w = String(p.Wie || '').toUpperCase().trim(); return !(w === S.view || (!w && S.view === 'SAMEN')); });
-    S.data.pockets = others.concat(list.map(function (p) { return { Naam: String(p.Naam).trim(), Categorieen: p.cats.join(', '), Bedrag: Math.round(C.num(p.Bedrag) * 100) / 100, Wie: wie }; }));
+    S.data.pockets = others.concat(list.map(function (p) { return { Naam: String(p.Naam).trim(), Categorieen: p.cats.join(', '), Bedrag: Math.round(C.num(p.Bedrag) * 100) / 100, Wie: wie, Periode: p.Periode === 'Jaar' ? 'Jaar' : 'Maand' }; }));
     closeSheet(); saveData('pockets', { pockets: S.data.pockets });
     return;
   }
@@ -363,10 +367,11 @@ function pocketAction(a, t) {
 
 /* ---------- FIRE-instellingen ---------- */
 var FIRE_KEYS = [['GEBOORTEJAAR', 'Geboortejaar (bij Samen: van de oudste)', 'bv. 1995', ''], ['BARISTA_DOEL', 'Totaal vermogen nodig voor Barista FIRE', 'bv. 1370000', '€'], ['FIRE_DOEL', 'Totaal vermogen nodig voor volledige FIRE', 'leeg = 25 × je jaaruitgaven', '€'], ['RENDEMENT', 'Verwacht rendement na inflatie, % per jaar', '5', '%'],
-  ['STARTVERMOGEN', 'Vermogen nu (spaarrekening + beleggingen + rekeningen)', 'leeg = ETF\'s + zichtrekening', '€'], ['INLEG', 'Inleg per maand', 'leeg = je gemiddelde spaarbedrag', '€']];
+  ['STARTVERMOGEN', 'Vermogen nu (spaarrekening + beleggingen + rekeningen)', 'leeg = ETF\'s + zichtrekening', '€'], ['INLEG', 'Inleg per maand', 'leeg = je gemiddelde spaarbedrag', '€'],
+  ['SPAARREKENING', 'Stand spaarrekening nu (voor het maandadvies)', 'bv. 8000', '€'], ['BUFFER_DOEL', 'Buffer op de spaarrekening', 'leeg = 3 maanden uitgaven', '€'], ['ETF_DEEL', 'Deel van het overschot naar ETF\'s, na de buffer', 'bv. 70', '%']];
 function fireEditor() {
   var get = function (k) { var r = S.data.instellingen.filter(function (x) { return x.Sleutel === S.view + '.' + k; })[0]; return r ? r.Waarde : ''; };
-  openSheet('FIRE-aannames voor ' + { MATS: 'Mats', SOFIE: 'Sofie', SAMEN: 'Samen' }[S.view], '<div class="fe">' + FIRE_KEYS.map(function (k) {
+  openSheet('FIRE en sparen voor ' + { MATS: 'Mats', SOFIE: 'Sofie', SAMEN: 'Samen' }[S.view], '<div class="fe">' + FIRE_KEYS.map(function (k) {
     return '<label>' + k[1] + '<input data-fk="' + k[0] + '" value="' + esc(get(k[0])) + '" placeholder="' + esc(k[2]) + '" inputmode="decimal"></label>';
   }).join('') + '<p class="nt">Alles in euro van vandaag. Rendement na inflatie: 4 tot 5% is een gangbare aanname voor een wereldwijde ETF.</p><p class="err" id="feerr" role="alert"></p><button class="btn pri" data-act="firesave">Bewaar</button></div>');
 }

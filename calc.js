@@ -6,6 +6,7 @@
   'use strict';
   var PERSONS = ['MATS', 'SOFIE', 'SAMEN'];
   var OWNER = { MATS: 'Mats', SOFIE: 'Sofie' };
+  var JOINT_CAT = 'Overdracht gezamenlijke rekening', CONTRIB_CAT = 'Bijdrage gezamenlijke rekening';
   var JOINT = 'Gezamenlijk';
 
   function weight(r, p) {
@@ -16,7 +17,9 @@
     var typ = {}, own = {}, acc = {};
     (data.categorieen || []).forEach(function (c) { typ[c.Categorie] = String(c.Type || '').toLowerCase(); });
     (data.rekeningen || []).forEach(function (a) { own[a.Rekening_ID] = a.Eigenaar; acc[a.Rekening_ID] = a; });
-    return { typ: typ, own: own, acc: acc, data: data };
+    /* Loon naar de volgende maand schuiven staat standaard aan; 'NEE' bij ALLE.LOON_VERSCHUIVEN zet het af */
+    var lv = (data.instellingen || []).filter(function (x) { return x.Sleutel === 'ALLE.LOON_VERSCHUIVEN'; })[0];
+    return { typ: typ, own: own, acc: acc, data: data, loonVerschuiven: !(lv && /^n/i.test(String(lv.Waarde))) };
   }
   function isCommon(ctx, id) {
     var a = ctx.acc[id];
@@ -34,12 +37,25 @@
     var out = [], raw = !(opts && opts.spread);
     ctx.data.transacties.forEach(function (r) {
       var t = typeOf(ctx, r.Categorie), w;
-      if (t === 'neutraal') return;
-      if (p === 'SAMEN') { if (!isCommon(ctx, r.Rekening_ID)) return; w = (+r.Aandeel_Mats || 0) + (+r.Aandeel_Sofie || 0); }
-      else w = weight(r, p);
+      if (p === 'SAMEN') {
+        if (t === 'neutraal' || !isCommon(ctx, r.Rekening_ID)) return;
+        w = (+r.Aandeel_Mats || 0) + (+r.Aandeel_Sofie || 0);
+      } else {
+        /* Persoonlijk = enkel de eigen rekeningen en kaarten, volledig bedrag. De storting naar de gezamenlijke
+           rekening is dan een eigen uitgave ('Bijdrage gezamenlijke rekening'); wat op de gezamenlijke rekening
+           gebeurt, staat enkel bij Samen. */
+        if (ctx.own[r.Rekening_ID] !== OWNER[p]) return;
+        if (t === 'neutraal') {
+          if (!(r.Categorie === JOINT_CAT && r.Bedrag < 0)) return;
+          r = Object.assign({}, r, { Categorie: CONTRIB_CAT }); t = 'uitgave';
+        }
+        w = 1;
+      }
       if (!w) return;
       if (filter && !filter(r)) return;
       var a = r.Bedrag * w, m = ym(r.Datum), n = raw || t !== 'uitgave' ? 0 : spreadMonths(r);
+      /* Loon dat na de 15de binnenkomt, is het budget van de volgende maand */
+      if (t === 'inkomen' && r.Categorie === 'Loon' && ctx.loonVerschuiven !== false && +String(r.Datum).slice(8, 10) >= 15) m = addM(m, 1);
       if (n > 1) for (var i = 0; i < n; i++) out.push({ r: r, t: t, a: a / n, m: addM(m, i), sp: n, si: i });
       else out.push({ r: r, t: t, a: a, m: m });
     });
@@ -381,11 +397,11 @@
       if (String(s.Datum).slice(0, 10) > end) return; (byAcc[s.Rekening_ID] = byAcc[s.Rekening_ID] || []).push({ d: String(s.Datum).slice(0, 10), v: num_(s.Saldo) }); });
     Object.keys(byAcc).forEach(function (id) {
       var own = ctx.own[id], a = ctx.acc[id] || {}, f;
-      if (view === 'SAMEN') f = own === JOINT ? 1 : 0; else f = own === JOINT ? 0.5 : own === OWNER[view] ? 1 : 0;
+      if (view === 'SAMEN') f = own === JOINT ? 1 : 0; else f = own === OWNER[view] ? 1 : 0;
       if (!f || /krediet/i.test(a.Type || '')) return;
       var l = byAcc[id].sort(function (x, y) { return x.d < y.d ? -1 : 1; }), last = l[l.length - 1];
       var cut = prev(ym(last.d)) + '-31', pr = l.filter(function (x) { return x.d <= cut; }).pop();
-      parts.push({ soort: /spaar/i.test(a.Type || '') ? 'sparen' : 'rekening', naam: (a.Naam || id) + (f < 1 ? ' (jouw helft)' : ''), v: last.v * f, vorig: pr ? pr.v * f : null, datum: last.d });
+      parts.push({ soort: /spaar/i.test(a.Type || '') ? 'sparen' : 'rekening', naam: a.Naam || id, v: last.v * f, vorig: pr ? pr.v * f : null, datum: last.d });
     });
     var bel = (ctx.data.beleggingen || []).filter(function (r) { return String(r.Datum).slice(0, 10) <= end; });
     var inv = view === 'SAMEN' ? null : investments({ own: ctx.own, acc: ctx.acc, typ: ctx.typ, data: { beleggingen: bel } }, view);
@@ -428,7 +444,7 @@
     var tot = 0, dates = [], parts = [];
     Object.keys(last).forEach(function (id) {
       var own = ctx.own[id], f;
-      if (own === JOINT) f = p === 'SAMEN' ? 1 : 0.5;
+      if (own === JOINT) f = p === 'SAMEN' ? 1 : 0;
       else f = p === 'SAMEN' ? (own === OWNER.MATS || own === OWNER.SOFIE ? 1 : 0) : own === OWNER[p] ? 1 : 0;
       if (!f) return;
       var a = ctx.acc[id];
@@ -494,6 +510,7 @@
   /* Nodig (50%), wens (30%), sparen en overschot (20%). Kolom Soort in Categorieen (nodig/wens) wint. */
   var NEEDS = { 'Woonkost': 1, 'Boodschappen': 1, 'Mobiliteit & parking': 1, 'Gezondheid': 1, 'Administratie & overheid': 1 };
   function needKind(ctx, cat) {
+    if (cat === CONTRIB_CAT) return 'nodig';
     var c = (ctx.data.categorieen || []).filter(function (x) { return x.Categorie === cat; })[0];
     var s = c ? String(c.Soort || '').toLowerCase() : '';
     if (/nodig|behoefte|need/.test(s)) return 'nodig';
@@ -541,7 +558,7 @@
     return (ctx.data.pockets || []).filter(function (p) {
       var w = String(p.Wie || '').toUpperCase().trim(); return p.Naam && (w === view || (!w && view === 'SAMEN'));
     }).map(function (p) {
-      return { naam: String(p.Naam), cats: String(p.Categorieen || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean), budget: num_(p.Bedrag), wie: String(p.Wie || '').trim() };
+      return { naam: String(p.Naam), cats: String(p.Categorieen || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean), budget: num_(p.Bedrag), wie: String(p.Wie || '').trim(), jaar: /jaar/i.test(String(p.Periode || '')) };
     });
   }
   function num_(x) { if (typeof x === 'number') return x; var s = String(x == null ? '' : x).replace(/\s|€/g, ''); if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.'); return parseFloat(s) || 0; }

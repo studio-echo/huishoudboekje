@@ -580,9 +580,9 @@ R.verloop = function (M, size) {
   if (size === 'S') return { title: title, body: kpi('inkomen min uitgaven', eur(vs), g > 0.5 ? eur(g) + ' naar sparen' : '') };
   var f = M.full(), samen = M.view === 'SAMEN', val = function (x) { return samen ? -x.uitgaven : x.inkomen + x.uitgaven; };
   var avg3 = f.map(function (x, i) { var w = f.slice(Math.max(0, i - 2), i + 1); return w.length < 3 ? null : w.reduce(function (a, y) { return a + val(y); }, 0) / 3; });
-  var groups = f.map(function (x) { var r = val(x); return samen ? [{ v: r, c: 'var(--accent)', l: 'uitgaven' }] : [{ v: r, c: r >= 0 ? 'var(--accent)' : 'var(--neg)', l: 'inkomen min uitgaven' }, { v: x.gespaard, c: 'var(--pos)', l: 'gespaard' }]; });
+  var groups = f.map(function (x) { var r = val(x), left = r - x.gespaard; return samen ? [{ v: r, c: 'var(--accent)', l: 'uitgaven' }] : [{ v: x.gespaard, c: 'var(--pos)', l: 'gespaard' }, { v: left, c: left >= 0 ? 'var(--accent)' : 'var(--neg)', l: 'bleef op rekening' }]; });
   var ch = vbars(f.map(function (x) { return x.m; }), groups, 0, { sel: function (mm) { return mm >= M.P.from && mm <= M.P.to; }, line: avg3 }) +
-    '<div class="lgd">' + (samen ? '<span><i class="sw a"></i>Gezamenlijke uitgaven</span>' : '<span><i class="sw a"></i>Inkomen min uitgaven</span><span><i class="sw" style="background:var(--pos)"></i>Gespaard</span>') + '<span><i class="dl"></i>Gemiddelde van 3 maanden</span></div>';
+    '<div class="lgd">' + (samen ? '<span><i class="sw a"></i>Gezamenlijke uitgaven</span>' : '<span><i class="sw" style="background:var(--pos)"></i>Gespaard</span><span><i class="sw a"></i>Bleef op rekening</span>') + '<span><i class="dl"></i>Inkomen min uitgaven, gemiddelde 3 maanden</span></div>';
   if (samen) return { title: title, body: ch };
   var once = Math.abs(svs - vs) >= 0.5 ? '<p class="nt">Zonder eenmalige uitgaven: ' + eur(svs) + '</p>' : '';
   var side = '<div class="hb"><div class="big">' + hero(vs) + '</div><div class="hs">inkomen min uitgaven</div><ul class="hl"><li><i class="sw" style="background:var(--pos)"></i>Gespaard<b>' + eur(g) + '</b></li><li>Bleef op rekening<b class="' + (net >= 0 ? '' : 'neg') + '">' + eur(net) + '</b></li></ul>' + once + '</div>';
@@ -628,9 +628,8 @@ R.bijdrage = function (M, size) {
 R.reizen = function (M, size) {
   var lc = M.dq.lastComplete || M.P.to, yr = lc.slice(0, 4), rows = C.inPeriod(M.all, yr + '-01', lc), spent = 0;
   rows.forEach(function (x) { if (x.t === 'uitgave' && x.r.Categorie === 'Reizen') spent -= x.a; });
-  var pk = C.pockets(M.ctx, M.view, [], 1).filter(function (p) { return p.cats.length === 1 && p.cats[0] === 'Reizen'; })[0], bud = pk ? pk.budget * 12 : null;
+  var pk = C.pockets(M.ctx, M.view, [], 1).filter(function (p) { return p.cats.indexOf('Reizen') >= 0; })[0], bud = pk ? (pk.jaar ? pk.budget : pk.budget * 12) : null;
   var tr = C.trips(rows), title = 'Reizen ' + yr + ': ' + eur(spent) + (bud ? ' van ' + eur(bud) : '');
-  if (!bud && pk === undefined) { var jp = C.pockets(M.ctx, M.view, [], 1).filter(function (p) { return p.cats.indexOf('Reizen') >= 0; })[0]; if (jp) title += ' (valt onder pocket ' + jp.naam + ')'; }
   var bar = bud ? '<div class="goal"><div class="gbar"><i style="width:' + Math.min(100, spent / bud * 100).toFixed(1) + '%"></i></div><div class="kl">' + (spent > bud ? '<span class="neg">' + eurAbs(spent - bud) + ' over het jaarbudget</span>' : 'Nog ' + eur(bud - spent) + ' in het jaarbudget') + '</div></div>' : '';
   return { title: title, body: bar + (tr.length ? '<div class="cap">Per reis</div><ul class="list">' + tr.map(function (t) { return row({ t: t.naam, s: t.aantal + ' betalingen', v: eur(t.bedrag) }); }).join('') + '</ul>' : empty('Zet "Reis: Barcelona maart 2026" in de Nota om per reis te tellen.')) };
 };
@@ -686,10 +685,9 @@ R.pockets = function (M, size) {
   /* Jaarpotten (naam met jaar of reis, of enkel Reizen): jaar tot nu tegenover 12 x het maandbedrag, geen maandalarm */
   var lc = M.dq.lastComplete || M.P.to, yr = lc.slice(0, 4), ytd = C.pocketRows(M.ctx, M.view, C.inPeriod(M.all, yr + '-01', lc));
   ps.forEach(function (p) {
-    p.jaar = /jaar|reis/i.test(p.naam) || (p.cats.length === 1 && p.cats[0] === 'Reizen');
     if (!p.jaar) return;
     var sp = 0; ytd.forEach(function (x) { if (x.t === 'uitgave' && p.cats.indexOf(x.r.Categorie) >= 0) sp -= x.a; });
-    p.uitgegeven = sp; p.budget = p.budget * 12;
+    p.uitgegeven = sp;
   });
   var ok = ps.filter(function (p) { return p.uitgegeven <= p.budget + 0.5; }).length, cov = {}, outside = 0, tb = 0, tu = 0;
   ps.forEach(function (p) { p.cats.forEach(function (c) { cov[c] = 1; }); if (!p.jaar) { tb += p.budget; tu += p.uitgegeven; } });
@@ -730,6 +728,30 @@ R.vastsoort = function (M, size) {
   var t = topItems(list, 6, function (c) { return 'ftype:' + encodeURIComponent(c.l); }), inc = avg(M.full(), 'inkomenStructureel');
   return { title: eur(t.tot) + ' per maand ligt vast' + (inc > 0 ? ', ' + pct(t.tot / inc, 0) + ' van ' + J(M, 'je', 'jullie') + ' inkomen' : ''),
     body: '<div class="dw">' + pie(t.items, eur(t.tot), 'per maand') + (size === 'S' ? '' : pieLegend(t.items, t.tot)) + '</div>' };
+};
+/* Maandadvies: wat blijft op de rekening voor volgende maand, wat gaat naar de spaarbuffer en wat naar ETF's.
+   Rekenregel op basis van eigen instellingen (BUFFER_DOEL, ETF_DEEL, SPAARREKENING), geen beleggingsadvies. */
+R.advies = function (M, size) {
+  if (M.view === 'SAMEN') return { title: 'Maandadvies', body: empty('Het maandadvies staat bij Mats en Sofie: sparen en beleggen gebeurt per persoon.') };
+  var lc = M.dq.lastComplete, to = M.P.to > lc ? lc : M.P.to, next = C.addM(to, 1);
+  var w = C.wealth(M.ctx, M.view, to), cur = w.parts.filter(function (p) { return p.soort === 'rekening'; }).reduce(function (a, p) { return a + p.v; }, 0);
+  if (!w.parts.some(function (p) { return p.soort === 'rekening'; })) return { title: 'Maandadvies', body: empty('Nog geen saldo van je zichtrekening in Saldi.') };
+  var last3 = C.byMonth(M.allS, C.range(C.addM(to, -2), to), true), spend = -last3.reduce(function (a, x) { return a + x.uitgaven; }, 0) / 3;
+  var bills = C.upcoming(C.inPeriod(M.all, M.V[0], to), M.freq().keys, to).filter(function (b) { return b.volgende === next; }).reduce(function (a, b) { return a + b.bedrag; }, 0);
+  var keep = spend + bills, avail = cur - keep;
+  var savNow = setting(M, 'SPAARREKENING') != null ? C.num(setting(M, 'SPAARREKENING')) : (w.parts.filter(function (p) { return p.soort === 'sparen'; })[0] || {}).v;
+  var target = setting(M, 'BUFFER_DOEL') != null ? C.num(setting(M, 'BUFFER_DOEL')) : Math.round(spend * 3 / 100) * 100;
+  var etfPct = setting(M, 'ETF_DEEL') != null ? C.num(setting(M, 'ETF_DEEL')) / 100 : null;
+  var toSav = 0, toEtf = 0, rest = Math.max(0, avail), note = [];
+  if (savNow == null) note.push('Vul de stand van je spaarrekening in om de buffer mee te rekenen.');
+  else { toSav = Math.min(rest, Math.max(0, target - savNow)); rest -= toSav; }
+  if (etfPct == null) { if (rest > 0) note.push('Kies via Instellingen welk deel van het overschot naar ETF\'s gaat.'); }
+  else { toEtf = rest * etfPct; toSav += rest - toEtf; rest = 0; }
+  var title = avail <= 0 ? 'Laat alles op je rekening staan voor ' + mLong(next) : 'Advies voor ' + mLong(next) + ': ' + eur(avail) + ' kan weg van je rekening';
+  var item = function (v, l, c) { return '<div><b' + (c ? ' class="' + c + '"' : '') + '>' + eur(v) + '</b><span>' + l + '</span></div>'; };
+  return { title: title, body: '<div class="stats">' + item(keep, 'houd op je rekening (' + eur(spend) + ' uitgaven' + (bills ? ' + ' + eur(bills) + ' rekeningen' : '') + ')') +
+    item(toSav, 'naar de spaarrekening' + (savNow != null ? ' (buffer ' + eur(target) + ')' : ''), 'pos') + item(etfPct == null ? rest : toEtf, etfPct == null ? 'naar sparen of beleggen' : 'naar ETF\'s', 'pos') + '</div>' +
+    '<p class="nt">Rekening nu ' + eur(cur) + '. ' + note.join(' ') + ' Een rekenregel op basis van jullie eigen instellingen, geen beleggingsadvies.</p><button class="btn sm2" data-act="fire">Instellingen</button>' };
 };
 R.komend = function (M, size) {
   var up = C.upcoming(C.inPeriod(M.all, M.V[0], M.dq.lastComplete), M.freq().keys, M.dq.lastComplete).filter(function (o) { return o.bedrag >= 20; });

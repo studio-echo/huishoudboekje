@@ -44,10 +44,10 @@ function handle_(e, body) {
       if (Array.isArray(body.pockets)) {
         if (body.pockets.length > 100) return out_({ error: 'te veel pockets' });
         var pt = ss.getSheetByName('Pockets') || ss.insertSheet('Pockets');
-        var rows = [['Naam', 'Categorieen', 'Bedrag', 'Wie']].concat(body.pockets.map(function (p) {
-          return [String(p.Naam || '').slice(0, 60), String(p.Categorieen || '').slice(0, 500), Number(p.Bedrag) || 0, String(p.Wie || '').slice(0, 10)];
+        var rows = [['Naam', 'Categorieen', 'Bedrag', 'Wie', 'Periode']].concat(body.pockets.map(function (p) {
+          return [String(p.Naam || '').slice(0, 60), String(p.Categorieen || '').slice(0, 500), Number(p.Bedrag) || 0, String(p.Wie || '').slice(0, 10), /jaar/i.test(String(p.Periode || '')) ? 'Jaar' : 'Maand'];
         }));
-        pt.clearContents(); pt.getRange(1, 1, rows.length, 4).setValues(rows);
+        pt.clearContents(); pt.getRange(1, 1, rows.length, 5).setValues(rows);
       }
       /* Instellingen: Sleutel / Waarde, enkel de meegestuurde sleutels worden aangepast */
       if (body.instellingen && typeof body.instellingen === 'object') {
