@@ -124,7 +124,8 @@
     var minLast = key.map(function (a) { return ld[a.Rekening_ID]; }).sort()[0] || (ms.length ? ms[ms.length - 1] + '-28' : null);
     var maxLast = Object.keys(ld).map(function (k) { return ld[k]; }).filter(Boolean).sort().pop() || minLast;
     var lastComplete = null;
-    if (minLast) { var mm = ym(minLast); lastComplete = +minLast.slice(8) >= lastDayOf(mm) - 3 ? mm : prev(mm); }
+    /* Een maand loopt nooit: de laatste maand met gegevens telt als afgerond. Een rekening die achterloopt, staat bij de aandachtspunten. */
+    if (maxLast) lastComplete = ym(maxLast);
     var partial = ms.filter(function (m) { return m > lastComplete; });
     var stale = rek.filter(function (a) {
       /* Pas melden als de laatste boeking meer dan een maand oud is: de gegevens komen maandelijks binnen. */

@@ -12,7 +12,7 @@ var PERS = ['maand', 'kwartaal', 'jaar', 'alles'], PLBL = { maand: 'Maand', kwar
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
-(function () { var v = lsGet('hb_person'); if (C.PERSONS.indexOf(v) >= 0) S.view = v; var p = lsGet('hb_per'); p = { '3m': 'kwartaal', vol: 'alles' }[p] || p; if (PERS.indexOf(p) >= 0) S.per = p; })();
+(function () { var v = lsGet('hb_person'); if (C.PERSONS.indexOf(v) >= 0) S.view = v; /* bij opstarten altijd de laatste maand */ })();
 
 /* ---------- laden en controleren ---------- */
 function fail(msg) { var e = new Error(msg); e.data = true; throw e; }
@@ -181,7 +181,7 @@ function status() {
   if (S.edit) { $('#status').innerHTML = ''; return; }
   var ns = S.notes.filter(function (n) { return n.level === 'note'; }), fs = S.notes.filter(function (n) { return n.level === 'foot'; });
   var h = (S.alert ? '<div class="alert slim" role="alert">' + esc(S.alert) + '</div>' : '') +
-    (S.saveErr ? '<div class="alert slim" role="status">' + esc(S.saveErr) + '</div>' : '') + '<div class="sline"><span>Cijfers volledig van ' + esc(F.mShort(S.V[0]) + ' tot ' + F.mShort(S.V[S.V.length - 1]) + ' ' + S.V[S.V.length - 1].slice(0, 4)) + ' (alle rekeningen ingeladen)' + (S.dq.partialMonths.length ? ' · ' + esc(S.dq.partialMonths.map(F.mShort).join(', ')) + ' loopt nog' : '') + '.</span>';
+    (S.saveErr ? '<div class="alert slim" role="status">' + esc(S.saveErr) + '</div>' : '') + '<div class="sline"><span>Cijfers van ' + esc(F.mShort(S.V[0]) + ' tot ' + F.mShort(S.V[S.V.length - 1]) + ' ' + S.V[S.V.length - 1].slice(0, 4)) + '.</span>';
   if (ns.length || fs.length) h += ' <button class="slink" data-act="notes" aria-expanded="' + S.notesOpen + '">' + (ns.length ? ns.length + ' aandachtspunt' + (ns.length > 1 ? 'en' : '') : fs.length + ' voetnoot' + (fs.length > 1 ? 'en' : '')) + ' <span aria-hidden="true">' + (S.notesOpen ? '▴' : '▾') + '</span></button>';
   h += '</div>';
   if (S.notesOpen) h += '<ul class="notes">' + ns.concat(fs).map(function (n) { return '<li' + (n.level === 'foot' ? ' class="ft"' : '') + '>' + esc(n.text) + '</li>'; }).join('') + '</ul>';

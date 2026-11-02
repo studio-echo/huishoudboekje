@@ -26,7 +26,7 @@ else {
   eq('ytd structureel', y.structureel, 1046.775); eq('ytd gespaard', y.gespaard, 1196);
   eq('ytd spaarratio', r1(y.spaarratio), 5.1); eq('ytd overschotratio', r1(y.overschot), 2.7);
   const dq = C.dataQuality(ctx);
-  ok('laatste volledige maand is september', dq.lastComplete === '2026-09', dq.lastComplete);
+  ok('laatste volledige maand is de laatste maand met gegevens', dq.lastComplete === '2026-10', dq.lastComplete);
   ok('kredietkaart en Revolut nooit "verouderd"', dq.stale.every(x => !/krediet|revolut/i.test(x)), dq.stale.join(','));
   const rec = C.recurring(C.inPeriod(rows, '2026-03', '2026-09'), 3, '2026-09'), key = k => rec.filter(r => r.key === k)[0];
   ok('woonkrediet herkend als lening', key('woonkrediet') && key('woonkrediet').lening);
@@ -69,7 +69,7 @@ tx.push(T('2026-09-15', 'M', 'Woonkost', -2000, 1, 0, { Eenmalig: 1, Tegenpartij
 tx.push(T('2026-10-03', 'M', 'Boodschappen', -12, 1, 0));
 // fietslening stopt in augustus
 for (let i = tx.length - 1; i >= 0; i--) if (/fiets/i.test(tx[i].Omschrijving) && tx[i].Datum >= '2026-09') tx.splice(i, 1);
-const data = { transacties: tx, rekeningen: rek, categorieen: cats, saldi: [{ Rekening_ID: 'M', Datum: '2026-09-28', Saldo: 3000 }, { Rekening_ID: 'G', Datum: '2026-09-30', Saldo: 1000 }, { Rekening_ID: 'M', Datum: '2026-08-28', Saldo: 9 }] };
+const data = { vandaag: '2026-10-20', transacties: tx, rekeningen: rek, categorieen: cats, saldi: [{ Rekening_ID: 'M', Datum: '2026-09-28', Saldo: 3000 }, { Rekening_ID: 'G', Datum: '2026-09-30', Saldo: 1000 }, { Rekening_ID: 'M', Datum: '2026-08-28', Saldo: 9 }] };
 const ctx = C.makeCtx(data), dq = C.dataQuality(ctx);
 
 ok('aliassen: Apple-varianten zijn dezelfde partij', C.counterparty({ Tegenpartij: 'APPLE.COM/BILL ITUNES' }) === C.counterparty({ Tegenpartij: 'Apple.com bill' }));
@@ -80,8 +80,8 @@ ok('aliassen: fietsverzekering is geen fietslening', C.counterparty({ Tegenparti
 ok('aliassen: hoofdletters, accenten en plaatsnamen', C.counterparty({ Tegenpartij: 'FRANK ENERGIE BELGIË BV' }) === C.counterparty({ Tegenpartij: 'Frank Energie' }));
 ok('naam zonder rekeningnummer', C.cleanName('Rekening vader (BE00 1234...)') === 'Rekening vader' && !/\d{3}/.test(C.cleanName('Provisie krediet 001-2345678-90')));
 
-ok('laatste volledige maand', dq.lastComplete === '2026-09', dq.lastComplete);
-ok('lopende maand is oktober', dq.partialMonths.join() === '2026-10');
+ok('laatste volledige maand', dq.lastComplete === '2026-10', dq.lastComplete);
+ok('geen lopende maand', dq.partialMonths.length === 0);
 ok('kredietkaart/Revolut/af en toe nooit verouderd', dq.stale.length === 0, dq.stale.join());
 ok('Gebruik kolom: maandelijks wint van type', C.usage({ Type: 'Kredietkaart', Gebruik: 'Maandelijks' }) === 'maandelijks' && C.usage({ Type: 'Kredietkaart' }) === 'af en toe' && C.usage({ Type: 'Zichtrekening', Gebruik: 'Af en toe' }) === 'af en toe');
 const dq2 = C.dataQuality(C.makeCtx(Object.assign({}, data, { rekeningen: rek.map(a => a.Rekening_ID === 'K' ? Object.assign({}, a, { Gebruik: 'maandelijks' }) : a) })));

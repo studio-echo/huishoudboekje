@@ -117,7 +117,7 @@ with sync_playwright() as pw:
     page.click('[data-per=kwartaal]')
     if not page.locator('.mlabel').inner_text().startswith('Q'): fails.append('label kwartaal: ' + page.locator('.mlabel').inner_text())
     page.click('[data-st="-1"]')
-    if not page.locator('.mlabel').inner_text().startswith('Q2'): fails.append('kwartaal terug: ' + page.locator('.mlabel').inner_text())
+    if not page.locator('.mlabel').inner_text().startswith('Q3'): fails.append('kwartaal terug: ' + page.locator('.mlabel').inner_text())
     page.click('[data-per=maand]')
     # vegen en pagina's: pijltjestoets, veeg met de muis, bolletjes
     page.keyboard.press('ArrowRight')
