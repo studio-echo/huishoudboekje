@@ -9,8 +9,8 @@ function eq(name, a, b, tol = 1e-6) { ok(name, Math.abs(a - b) < tol, 'got ' + a
 const r1 = x => Math.round(x * 1000) / 10;
 
 /* ---------- 1. correctheidspoort op de echte data ---------- */
-const fx = path.join(__dirname, '..', 'data', 'fixture.json');
-if (!fs.existsSync(fx)) console.log('SKIP correctheidspoort: data/fixture.json ontbreekt');
+const fx = path.join(__dirname, '..', 'data', 'fixture_v14.json');
+if (!fs.existsSync(fx)) console.log('SKIP correctheidspoort: data/fixture_v14.json ontbreekt');
 else {
   const d = JSON.parse(fs.readFileSync(fx, 'utf8'));
   if (d.error) { console.log('FAIL fixture bevat een fout: ' + d.error); process.exit(1); }
@@ -135,18 +135,18 @@ const V3 = (v, p) => L.defaults(v, p);
 }));
 ok('MATS en SOFIE zelfde pagina\'s, auto enkel bij Sofie', JSON.stringify(L.pages('MATS').map(p => p.id)) === JSON.stringify(L.pages('SOFIE').map(p => p.id)) && !L.defaults('MATS', 'vast').some(x => x.id === 'auto') && L.defaults('SOFIE', 'vast').some(x => x.id === 'auto'));
 ok('pagina Samen enkel bij SAMEN, FIRE overal', L.pages('MATS').length === 7 && L.pages('SAMEN').length === 8 && L.pages('SAMEN').some(p => p.id === 'fire'));
-ok('gedeelde indeling opgeschoond, geen dubbels over pagina\'s', JSON.stringify(L.fromShared({ v: 6, 'MATS:overzicht': [{ id: 'inkomenflow', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], 'MATS:vast': [{ id: 'inkomenflow', size: 'S' }, { id: 'buffer', size: 'S' }] })) === '{"MATS:overzicht":[{"id":"inkomenflow","size":"L"}],"MATS:vast":[{"id":"buffer","size":"S"}]}');
+ok('gedeelde indeling opgeschoond, geen dubbels over pagina\'s', JSON.stringify(L.fromShared({ v: 7, 'MATS:overzicht': [{ id: 'inkomenflow', size: 'L' }, { id: 'eerlijkheid', size: 'M' }], 'MATS:vast': [{ id: 'inkomenflow', size: 'S' }, { id: 'buffer', size: 'S' }] })) === '{"MATS:overzicht":[{"id":"inkomenflow","size":"L"}],"MATS:vast":[{"id":"buffer","size":"S"}]}');
 ok('oude gedeelde indeling genegeerd', JSON.stringify(L.fromShared({ MATS: [{ id: 'auto', size: 'L' }] })) === '{}');
 ok('eerlijkheid enkel bij SAMEN', !L.allowed('eerlijkheid', 'MATS') && L.allowed('eerlijkheid', 'SAMEN'));
 ok('ongeveer 20 widgets', L.CATALOG.length >= 19, L.CATALOG.length);
-const saved = L.parseSaved(JSON.stringify({ v: 6, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
+const saved = L.parseSaved(JSON.stringify({ v: 7, items: [{ id: 'inkomen', size: 'L' }, { id: 'bestaatniet', size: 'S' }, { id: 'inkomen', size: 'S' }, { id: 'buffer', size: 'XL' }] }), 'MATS');
 ok('opgeslagen indeling opgeschoond', JSON.stringify(saved) === '[{"id":"inkomen","size":"L"},{"id":"buffer","size":"M"}]', JSON.stringify(saved));
 ok('kapotte of oude opslag geeft null', L.parseSaved('{kapot', 'MATS') === null && L.parseSaved(null, 'MATS') === null && L.parseSaved('{"v":2,"items":[]}', 'MATS') === null);
 ok('galerij toont wat op geen pagina staat', L.gallery(saved, 'MATS').every(w => w.id !== 'inkomen' && w.id !== 'buffer') && L.gallery(saved, 'MATS').some(w => w.id === 'inkomenflow') && !L.gallery(saved, 'MATS').some(w => w.id === 'eerlijkheid'));
 ok('verplaatsen', L.move([{ id: 'a' }, { id: 'b' }, { id: 'c' }], 0, 2).map(x => x.id).join('') === 'bca');
 ok('volgende grootte', L.nextSize('S') === 'M' && L.nextSize('L') === 'S');
 const sh = L.toShared(k => L.defaults(...k.split(':')));
-ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) === JSON.stringify(L.defaults('SAMEN', 'samen')) && sh.v === 6);
+ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) === JSON.stringify(L.defaults('SAMEN', 'samen')) && sh.v === 7);
 
 /* ---------- nieuwe berekeningen, verzonnen voorbeeld ---------- */
 {
@@ -159,13 +159,13 @@ ok('toShared heen en terug', JSON.stringify(L.fromShared(sh)['SAMEN:samen']) ===
   ['2026-01', '2026-02', '2026-03', '2026-04'].forEach((m, i) => {
     d.transacties.push(tx(m + '-25', 'Loon', 1000, 'Werkgever'), tx(m + '-03', 'Woonkost', -500, 'Huisbaas'), tx(m + '-10', 'Boodschappen', -80 - i * 20, 'Winkel'));
   });
-  d.transacties.push(tx('2026-01-15', 'Woonkost', -60, 'Water'), tx('2026-04-15', 'Woonkost', -60, 'Water'), tx('2026-02-01', 'Woonkost', -300, 'Brandverzekering'),
+  d.transacties.push(tx('2026-01-15', 'Woonkost', -60, 'Water'), tx('2026-04-15', 'Woonkost', -60, 'Water'), tx('2025-10-15', 'Woonkost', -60, 'Water'), tx('2026-02-01', 'Woonkost', -300, 'Brandverzekering'),
     tx('2026-03-02', 'Mobiliteit & parking', -50, 'TOTAL 123 Gent'), tx('2026-03-09', 'Mobiliteit & parking', -6, 'Q-Park Centrum'), tx('2026-03-12', 'Reizen', -200, 'Hotel'));
   const cx = C.makeCtx(d), rows = C.rowsFor(cx, 'SOFIE'), rec = {};
   C.recurring(rows, 3, '2026-04').forEach(r => { rec[r.key] = 1; });
   const fq = C.frequency(rows, rec);
   ok('ritme: huur elke maand', fq.keys[C.counterparty(d.transacties[1])] === 'maandelijks' && Math.round(fq.maandelijks) === 2000, fq.maandelijks);
-  ok('ritme: water per kwartaal', Math.round(fq.kwartaal) === 120, fq.kwartaal);
+  ok('ritme: water per kwartaal', Math.round(fq.kwartaal) === 180, fq.kwartaal);
   ok('ritme: verzekering per jaar', Math.round(fq.jaarlijks) === 300, fq.jaarlijks);
   ok('ritme: boodschappen los', fq.keys['winkel'] === 'los');
   const ff = C.fixedFree(rows, fq.keys, ['2026-03']);

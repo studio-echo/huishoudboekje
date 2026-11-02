@@ -221,6 +221,8 @@
       xs.forEach(function (x) { tot[x.m] = (tot[x.m] || 0) - x.a; cats[x.r.Categorie] = (cats[x.r.Categorie] || 0) - x.a; });
       var mk = Object.keys(tot).sort();
       if (mk.length < (minMonths || 3)) return;
+      /* maandelijks = de laatste 3 betaalmaanden liggen telkens hoogstens 2 maanden uit elkaar (geen kwartaal- of jaarbetaling) */
+      var l3 = mk.slice(-3); if (monthGap(l3[0], l3[1]) > 2 || monthGap(l3[1], l3[2]) > 2) return;
       var last3 = mk.slice(-3).map(function (m) { return tot[m]; }), med = median(last3);
       if (med < 1) return;
       var tol = isLoan(k) ? 0.5 : 0.25;
@@ -372,9 +374,10 @@
   /* ---------- vermogen ---------- */
   /* Laatste saldo per zichtrekening (Saldi) x eigen deel, ETF-waarde (Beleggingen) en wat ontbreekt.
      Verschil met vorige maand: saldo op of voor het einde van de vorige maand. Niets wordt verzonnen. */
-  function wealth(ctx, view) {
-    var parts = [], missing = [], byAcc = {};
-    (ctx.data.saldi || []).forEach(function (s) { (byAcc[s.Rekening_ID] = byAcc[s.Rekening_ID] || []).push({ d: String(s.Datum).slice(0, 10), v: num_(s.Saldo) }); });
+  function wealth(ctx, view, asOf) {
+    var parts = [], missing = [], byAcc = {}, end = (asOf || '9999-12') + '-31';
+    (ctx.data.saldi || []).forEach(function (s) {
+      if (String(s.Datum).slice(0, 10) > end) return; (byAcc[s.Rekening_ID] = byAcc[s.Rekening_ID] || []).push({ d: String(s.Datum).slice(0, 10), v: num_(s.Saldo) }); });
     Object.keys(byAcc).forEach(function (id) {
       var own = ctx.own[id], a = ctx.acc[id] || {}, f;
       if (view === 'SAMEN') f = own === JOINT ? 1 : 0; else f = own === JOINT ? 0.5 : own === OWNER[view] ? 1 : 0;
@@ -383,16 +386,17 @@
       var cut = prev(ym(last.d)) + '-31', pr = l.filter(function (x) { return x.d <= cut; }).pop();
       parts.push({ soort: /spaar/i.test(a.Type || '') ? 'sparen' : 'rekening', naam: (a.Naam || id) + (f < 1 ? ' (jouw helft)' : ''), v: last.v * f, vorig: pr ? pr.v * f : null, datum: last.d });
     });
-    var inv = view === 'SAMEN' ? null : investments(ctx, view);
+    var bel = (ctx.data.beleggingen || []).filter(function (r) { return String(r.Datum).slice(0, 10) <= end; });
+    var inv = view === 'SAMEN' ? null : investments({ own: ctx.own, acc: ctx.acc, typ: ctx.typ, data: { beleggingen: bel } }, view);
     if (inv) {
       var h = inv.hist || [], pv = h.length > 1 ? h[h.length - 2].v : null;
       parts.push({ soort: 'beleggen', naam: 'ETF\'s (marktwaarde)', v: inv.waarde, vorig: pv, datum: inv.datum });
     }
     /* stortingen naar sparen of beleggen zonder saldo of marktwaarde: enkel inleg bekend */
     var inleg = 0;
-    rowsFor(ctx, view).forEach(function (x) { if (x.t === 'sparen') inleg -= x.a; });
+    rowsFor(ctx, view).forEach(function (x) { if (x.t === 'sparen' && x.m <= end.slice(0, 7)) inleg -= x.a; });
     var hasSav = parts.some(function (p) { return p.soort === 'sparen'; });
-    if (inleg > 0.5 && !hasSav) missing.push({ naam: 'Spaarrekening', tekst: 'geen saldo in het blad, enkel stortingen bekend (' + Math.round(inleg) + ' euro in totaal, inclusief ETF-stortingen)' });
+    if (inleg > 0.5 && !hasSav) missing.push({ naam: 'Spaarrekening', tekst: 'geen saldo in het blad, enkel stortingen bekend', inleg: inleg });
     var tot = parts.reduce(function (a, p) { return a + p.v; }, 0), withPrev = parts.filter(function (p) { return p.vorig != null; });
     return { parts: parts, missing: missing, totaal: tot, verschil: withPrev.length ? withPrev.reduce(function (a, p) { return a + p.v - p.vorig; }, 0) : null, zonderVorig: parts.length - withPrev.length };
   }
@@ -444,10 +448,16 @@
      buiten de variabele categorieen) en los (de rest: boodschappen, restaurant, winkels). */
   var YEARLY_RX = /verzeker|insurance|vivium|ethias|belasting|taks|\btax\b|spf fin|fod fin|lidgeld|jaarbijdrage|jaarabonnement|mutualiteit|helan|onderhoud ketel|keuring/;
   function monthGap(a, b) { return (+b.slice(0, 4) - +a.slice(0, 4)) * 12 + (+b.slice(5) - +a.slice(5)); }
+  /* Bedragen per maand liggen binnen 25% van elkaar (een abonnement, geen losse aankopen) */
+  function similar(xs) {
+    var pm = {}; xs.forEach(function (x) { pm[x.m] = (pm[x.m] || 0) - x.a; });
+    var v = Object.keys(pm).map(function (k) { return pm[k]; }), mn = Math.min.apply(null, v), mx = Math.max.apply(null, v);
+    return mx <= mn * 1.25 + 1;
+  }
   function frequency(rows, recKeys) {
     var g = {};
     rows.forEach(function (x) {
-      if (x.t !== 'uitgave') return;
+      if (x.t !== 'uitgave' || +x.r.Eenmalig) return;
       var k = counterparty(x.r) || '?';
       (g[k] = g[k] || []).push(x);
     });
@@ -458,8 +468,8 @@
       var mk = Object.keys(ms).sort(), kind = 'los', var_ = NOT_FIXED[xs[0].r.Categorie];
       var raw = norm((xs[0].r.Tegenpartij || '') + ' ' + (xs[0].r.Omschrijving || '') + ' ' + xs[0].r.Categorie);
       if (recKeys && recKeys[k]) kind = 'maandelijks';
-      else if (!var_ && mk.length >= 2 && mk.every(function (m, i) { return !i || Math.abs(monthGap(mk[i - 1], m) - 3) <= 1; })) kind = 'kwartaal';
-      else if (!var_ && (YEARLY_RX.test(raw) || xs[0].r.Categorie === 'Administratie & overheid') && mk.length <= 2) kind = 'jaarlijks';
+      else if (!var_ && mk.length >= 3 && mk.every(function (m, i) { return !i || Math.abs(monthGap(mk[i - 1], m) - 3) <= 1; }) && similar(xs)) kind = 'kwartaal';
+      else if (!var_ && YEARLY_RX.test(raw) && mk.length <= 2) kind = 'jaarlijks';
       if (tot < 0) kind = 'los';
       out[kind] += tot; keys[k] = kind;
     });
@@ -534,7 +544,14 @@
     });
   }
   function num_(x) { if (typeof x === 'number') return x; var s = String(x == null ? '' : x).replace(/\s|€/g, ''); if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.'); return parseFloat(s) || 0; }
+  /* Persoonlijke pockets tellen enkel wat van de eigen rekeningen gaat, zonder maaltijdcheques (de budgetten
+     gelden bovenop de cheques). Gezamenlijke uitgaven vallen onder de pockets van Samen. */
+  function pocketRows(ctx, view, rows) {
+    if (view === 'SAMEN') return rows;
+    return rows.filter(function (x) { var a = ctx.acc[x.r.Rekening_ID] || {}; return ctx.own[x.r.Rekening_ID] === OWNER[view] && !/maaltijd/i.test(a.Type || ''); });
+  }
   function pockets(ctx, view, rows, nMonths) {
+    rows = pocketRows(ctx, view, rows);
     return pocketList(ctx, view).filter(function (p) { return p.budget > 0 && p.cats.length; }).map(function (p) {
       var s = 0; rows.forEach(function (x) { if (x.t === 'uitgave' && p.cats.indexOf(x.r.Categorie) >= 0) s -= x.a; });
       p.uitgegeven = s / (nMonths || 1); return p;
@@ -642,7 +659,7 @@
   function monthNameNl(m) { return m ? MN[+m.slice(5) - 1] : '?'; }
 
   return {
-    PERSONS: PERSONS, OWNER: OWNER, jointContrib: jointContrib, wealth: wealth, trips: trips, isCheck: isCheck, checkRows: checkRows, spreadMonths: spreadMonths, weight: weight, makeCtx: makeCtx, typeOf: typeOf, rowsFor: rowsFor, metrics: metrics,
+    PERSONS: PERSONS, OWNER: OWNER, jointContrib: jointContrib, pocketRows: pocketRows, wealth: wealth, trips: trips, isCheck: isCheck, checkRows: checkRows, spreadMonths: spreadMonths, weight: weight, makeCtx: makeCtx, typeOf: typeOf, rowsFor: rowsFor, metrics: metrics,
     inPeriod: inPeriod, months: months, lastDates: lastDates, dataQuality: dataQuality, prev: prev, addM: addM, range: range,
     byMonth: byMonth, byCategory: byCategory, catAvgPrev: catAvgPrev, recurring: recurring, isLoan: isLoan, usage: usage,
     topCounterparties: topCounterparties, largest: largest, householdSplit: householdSplit, fairness: fairness,

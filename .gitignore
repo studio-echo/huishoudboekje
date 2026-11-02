@@ -5,3 +5,4 @@ data/*.csv
 .DS_Store
 node_modules/
 dev/out/
+data/fixture_v14.json

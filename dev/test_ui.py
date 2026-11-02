@@ -113,7 +113,7 @@ with sync_playwright() as pw:
     for k in ['kwartaal', 'jaar', 'alles']:
         page.click('[data-per=%s]' % k)
         if page.locator('[data-per=%s]' % k).get_attribute('aria-selected') != 'true': fails.append('periode %s werkt niet' % k)
-    if 'mrt tot' not in page.locator('.mlabel').inner_text(): fails.append('label alles: ' + page.locator('.mlabel').inner_text())
+    if 'jan tot' not in page.locator('.mlabel').inner_text(): fails.append('label alles: ' + page.locator('.mlabel').inner_text())
     page.click('[data-per=kwartaal]')
     if not page.locator('.mlabel').inner_text().startswith('Q'): fails.append('label kwartaal: ' + page.locator('.mlabel').inner_text())
     page.click('[data-st="-1"]')
@@ -197,7 +197,7 @@ with sync_playwright() as pw:
     page.reload(); page.wait_for_selector('#grid .w')
     if page.locator('#grid .w').count() < 7: fails.append('kapotte opslag geeft geen standaardindeling')
     # pockets instellen in het dashboard (lokaal in testmodus)
-    page.evaluate("() => { localStorage.setItem('hb_person', 'SOFIE') }"); page.reload(); page.wait_for_selector('#grid .w')
+    page.evaluate("() => { localStorage.setItem('hb_person', 'SOFIE'); localStorage.setItem('hb_local_pockets', '[]') }"); page.reload(); page.wait_for_selector('#grid .w')
     page.click('[data-pg=pockets]'); page.wait_for_timeout(320)
     page.click('[data-act=pockets]'); page.wait_for_selector('#pe')
     page.fill('[data-pi="0:Naam"]', 'Boodschappen'); page.fill('[data-pi="0:Bedrag"]', '250')
@@ -225,11 +225,11 @@ with sync_playwright() as pw:
 
     # 2b. gedeelde indeling uit het blad wint van wat op het toestel staat
     fx = json.load(open(os.path.join(ROOT, 'data', 'fixture.json')))
-    fx3 = dict(fx); fx3['indeling'] = {'v': 6, 'MATS:overzicht': [{'id': 'gemiddelde', 'size': 'L'}, {'id': 'inkomenflow', 'size': 'L'}]}
+    fx3 = dict(fx); fx3['indeling'] = {'v': 7, 'MATS:overzicht': [{'id': 'gemiddelde', 'size': 'L'}, {'id': 'inkomenflow', 'size': 'L'}]}
     errors = []
     ctx, page = new_page(b, 820, 1180, 'light', errors, fx3)
     page.goto(BASE + 'index.html?src=fixture'); page.wait_for_selector('#grid .w')
-    page.evaluate("() => { localStorage.setItem('hb_l4_MATS:overzicht', JSON.stringify({v:6,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS'); localStorage.removeItem('hb_page_MATS') }")
+    page.evaluate("() => { localStorage.setItem('hb_l4_MATS:overzicht', JSON.stringify({v:7,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS'); localStorage.removeItem('hb_page_MATS') }")
     page.reload(); page.wait_for_selector('#grid .w')
     ids = page.evaluate("() => [...document.querySelectorAll('#grid .w')].map(t => t.dataset.id)")
     if ids != ['gemiddelde', 'inkomenflow']: fails.append('gedeelde indeling niet gebruikt: ' + ','.join(ids))

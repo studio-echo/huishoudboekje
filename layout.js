@@ -4,7 +4,7 @@
   else root.Layout = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-  var VERSION = 6, SIZES = ['S', 'M', 'L'], ROWS = 4;
+  var VERSION = 7, SIZES = ['S', 'M', 'L'], ROWS = 4;
   var ALL = ['MATS', 'SOFIE', 'SAMEN'];
 
   /* Pagina's om tussen te vegen. Elke standaardpagina vult precies 4 rijen van 4 kolommen (een iPad liggend). */
@@ -24,7 +24,7 @@
   var CATALOG = [
     { id: 'vermogen', naam: 'Vermogen', h: h(2, 2, 2), views: ALL },
     { id: 'verloop', naam: 'Resultaat per maand', h: h(1, 2, 2), views: ALL },
-    { id: 'bijdrage', naam: 'Bijdragen gezamenlijke rekening', h: h(1, 1, 2), views: ALL },
+    { id: 'bijdrage', naam: 'Bijdragen gezamenlijke rekening', h: h(2, 2, 2), views: ALL },
     { id: 'reizen', naam: 'Reizen dit jaar', h: h(2, 2, 2), views: ALL },
     { id: 'inkomen', naam: 'Inkomen', h: h(1, 1, 1), views: ALL },
     { id: 'uitgaven', naam: 'Uitgaven', h: h(1, 1, 1), views: ALL },
@@ -62,10 +62,11 @@
   var D = {
     overzicht: [['vermogen', 'M'], ['verloop', 'M'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gespaard', 'S'], ['spaarratio', 'S'], ['prognose', 'M'], ['veranderingen', 'M']],
     uitgaven: [['donut', 'M'], ['categorieen', 'M'], ['reizen', 'S'], ['eenmalig', 'S']],
-    pockets: [['pockets', 'L'], ['regel', 'M'], ['bijdrage', 'M']],
+    pockets: [['pockets', 'L'], ['regel', 'L']],
     vast: [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'S'], ['auto', 'S']],
     /* Enkel Sofie heeft een auto; bij Mats en Samen krijgt Wat eraan komt die plaats. */
-    'MATS:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'M']],
+    'MATS:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'S'], ['bijdrage', 'S']],
+    'SOFIE:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['auto', 'S'], ['bijdrage', 'S']],
     'SAMEN:vast': [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'M']],
     sparen: [['spaarverloop', 'L'], ['beleggingen', 'M'], ['buffer', 'S'], ['spaardoel', 'S'], ['opzij', 'M']],
     fire: [['fire', 'L'], ['fireinst', 'L']],

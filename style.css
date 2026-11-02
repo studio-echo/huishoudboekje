@@ -407,3 +407,6 @@ body.fit #status .notes{position:absolute;right:var(--gut);z-index:25;max-width:
 .stats.sm{flex:0 0 auto;margin-bottom:6px}.stats.sm b{font-size:18px}
 [data-id=verloop] .chart,[data-id=bijdrage] .chart{min-height:150px}
 .list li.miss>div{display:flex;flex-direction:column;gap:2px}.list li.miss small{display:block}
+.wbar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--track);margin:10px 0 8px;gap:2px}.wbar i{display:block;height:100%}
+.wleg{display:grid;gap:4px}.wleg div{display:flex;align-items:center;gap:8px;font-size:13px}.wleg i{width:10px;height:10px;border-radius:3px;flex:none}.wleg span{flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pkt small{display:block;font-size:11px;color:var(--muted);white-space:normal;line-height:1.25}
