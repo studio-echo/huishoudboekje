@@ -4,12 +4,13 @@
   else root.Layout = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-  var VERSION = 8, SIZES = ['S', 'M', 'L'], ROWS = 4;
+  var VERSION = 9, SIZES = ['S', 'M', 'L'], ROWS = 4;
   var ALL = ['MATS', 'SOFIE', 'SAMEN'];
 
   /* Pagina's om tussen te vegen. Elke standaardpagina vult precies 4 rijen van 4 kolommen (een iPad liggend). */
   var PAGES = [
     { id: 'overzicht', naam: 'Overzicht', views: ALL },
+    { id: 'inzichten', naam: 'Inzichten', views: ALL },
     { id: 'uitgaven', naam: 'Uitgaven', views: ALL },
     { id: 'pockets', naam: 'Pockets', views: ALL },
     { id: 'vast', naam: 'Vaste kosten', views: ALL },
@@ -22,6 +23,7 @@
   /* h = hoogte in rijen per grootte. Breedte: S = kwart, M = half, L = volledig (op een gsm: S = half). */
   var h = function (s, m, l) { return { S: s, M: m, L: l }; };
   var CATALOG = [
+    { id: 'inzichten', naam: 'Inzichten deze maand', h: h(4, 4, 4), views: ALL },
     { id: 'vermogen', naam: 'Vermogen', h: h(2, 2, 2), views: ALL },
     { id: 'verloop', naam: 'Resultaat per maand', h: h(1, 2, 2), views: ALL },
     { id: 'advies', naam: 'Maandadvies sparen', h: h(2, 2, 2), views: ['MATS', 'SOFIE'] },
@@ -62,6 +64,7 @@
 
   var D = {
     overzicht: [['vermogen', 'M'], ['verloop', 'M'], ['inkomen', 'S'], ['uitgaven', 'S'], ['gespaard', 'S'], ['spaarratio', 'S'], ['prognose', 'M'], ['veranderingen', 'M']],
+    inzichten: [['inzichten', 'L']],
     uitgaven: [['donut', 'M'], ['categorieen', 'M'], ['reizen', 'S'], ['eenmalig', 'S']],
     pockets: [['pockets', 'L'], ['regel', 'L']],
     vast: [['vastsoort', 'M'], ['vastelasten', 'M'], ['komend', 'S'], ['auto', 'S']],

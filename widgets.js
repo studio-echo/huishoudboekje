@@ -729,13 +729,60 @@ R.vastsoort = function (M, size) {
   return { title: eur(t.tot) + ' per maand ligt vast' + (inc > 0 ? ', ' + pct(t.tot / inc, 0) + ' van ' + J(M, 'je', 'jullie') + ' inkomen' : ''),
     body: '<div class="dw">' + pie(t.items, eur(t.tot), 'per maand') + (size === 'S' ? '' : pieLegend(t.items, t.tot)) + '</div>' };
 };
+/* Inzichten: de geselecteerde maand in gewone taal, plus wat je deze maand in de gaten houdt */
+R.inzichten = function (M, size) {
+  var e = M.view !== 'SAMEN' && needOwn(M); if (e) return { title: 'Inzichten', body: empty(e) };
+  var m = M.m, r = M.ref(), samen = M.view === 'SAMEN', vs = m.inkomen + m.uitgaven, wk = samen ? 'jullie' : 'je';
+  var card = function (ic, t, inner) { return '<section class="ins"><h4><span aria-hidden="true">' + ic + '</span>' + t + '</h4>' + inner + '</section>'; };
+  var li = function (t, v, c, dd) { return '<li' + (dd ? ' data-dd="' + dd + '" role="button" tabindex="0"' : '') + '><span>' + t + '</span><b' + (c ? ' class="' + c + '"' : '') + '>' + v + '</b></li>'; };
+  var cards = [], todo = [];
+  /* 1. kort */
+  var ff = C.fixedFree(M.rows, M.freq().keys, C.range(M.P.from, M.P.to)).reduce(function (a, x) { a.v += x.vast; a.f += x.vrij; return a; }, { v: 0, f: 0 });
+  var sum = samen ? '<p class="big2">' + eurAbs(m.uitgaven) + '</p><p class="nt">gezamenlijke uitgaven' + (r ? ', gewoonlijk ' + eurAbs(r.uitgaven) : '') + '</p>' +
+      '<ul class="il">' + li('Vaste kosten (lening, energie, ...)', eur(ff.v)) + li('Vrij uitgegeven', eur(ff.f)) + '</ul>'
+    : '<p class="big2' + (vs < 0 ? ' neg' : '') + '">' + eur(vs) + '</p><p class="nt">inkomen min uitgaven' + (r ? ', gewoonlijk ' + (r.inkomen + r.uitgaven >= 0 ? eur(r.inkomen + r.uitgaven) + ' over' : eurAbs(r.inkomen + r.uitgaven) + ' tekort') : '') + '</p>' +
+      '<ul class="il">' + li('Inkomen', eur(m.inkomen)) + li('Uitgaven', eurAbs(m.uitgaven)) + li('Gespaard (' + pct(m.spaarratio || 0, 0) + ')', eur(m.gespaard), 'pos') + li('Bleef op rekening', eur(vs - m.gespaard), vs - m.gespaard < 0 ? 'neg' : '') + '</ul>';
+  cards.push(card('◎', 'Kort', sum));
+  /* 2. pockets */
+  var ps = C.pockets(M.ctx, M.view, M.rows, M.P.n).filter(function (p) { return !p.jaar; });
+  /* De bijdrage aan de gezamenlijke rekening hangt af van de dag van storten: geen signaal */
+  var noise = function (cat) { return cat === 'Bijdrage gezamenlijke rekening'; };
+  var over = ps.filter(function (p) { return p.uitgegeven > p.budget + 0.5 && !p.cats.every(noise); }).sort(function (a, b) { return (b.uitgegeven - b.budget) - (a.uitgegeven - a.budget); });
+  if (ps.length) {
+    cards.push(card('◔', (ps.length - over.length) + ' van ' + ps.length + ' pockets binnen budget', over.length ? '<ul class="il">' + over.slice(0, 4).map(function (p) { return li(esc(p.naam), '+' + eurAbs(p.uitgegeven - p.budget), 'neg', 'pk:' + encodeURIComponent(p.cats.join('|'))); }).join('') + '</ul>' : '<p class="nt">Alles binnen budget. Goed bezig.</p>'));
+    over.slice(0, 2).forEach(function (p) { todo.push('Hou <b>' + esc(p.naam) + '</b> in de gaten: ' + eurAbs(p.uitgegeven - p.budget) + ' over het budget van ' + eur(p.budget) + '.'); });
+  }
+  /* 3. hoger en lager dan gewoonlijk */
+  var c = catModel(M), diffs = c.items.filter(function (it) { return !it.pot && !noise(it.naam) && it.ref != null && Math.abs(it.v - it.ref) >= 30; }).sort(function (a, b) { return Math.abs(b.v - b.ref) - Math.abs(a.v - a.ref); }).slice(0, 4);
+  cards.push(card('↕', 'Hoger en lager dan gewoonlijk', diffs.length ? '<ul class="il">' + diffs.map(function (it) { var d = it.v - it.ref; return li(esc(it.naam), (d > 0 ? '▲ ' : '▼ ') + eurAbs(d), d > 0 ? 'neg' : 'pos', 'cat:' + encodeURIComponent(it.naam)); }).join('') + '</ul>' : '<p class="nt">Geen categorie week sterk af.</p>'));
+  /* 4. grootste uitgaven */
+  var big = C.largest(loose(M).filter(function (x) { return !noise(x.r.Categorie); }), 3);
+  cards.push(card('★', 'Grootste losse uitgaven', big.length ? '<ul class="il">' + big.map(function (b) { return li(esc(b.naam) + '<small>' + esc(b.cat) + (b.eenmalig ? ' · eenmalig' : '') + '</small>', eur(b.bedrag)); }).join('') + '</ul>' : '<p class="nt">Geen uitgaven.</p>'));
+  /* 5. duurder geworden en wat eraan komt */
+  var lc = M.dq.lastComplete, next = C.addM(M.P.to > lc ? lc : M.P.to, 1);
+  var up = C.upcoming(C.inPeriod(M.all, M.V[0], lc), M.freq().keys, lc).filter(function (b) { return b.volgende === next && b.bedrag >= 20; });
+  var dear = M.rec().filter(function (x) { return x.loopt && x.stijging; });
+  var nx = up.map(function (b) { return li(esc(b.naam) + '<small>verwacht in ' + mLong(next) + '</small>', eur(b.bedrag)); }).concat(dear.slice(0, 2).map(function (x) { return li(esc(x.naam) + '<small>werd duurder</small>', '+' + eur(x.stijging) + '/m', 'neg'); }));
+  cards.push(card('→', 'Komt eraan', nx.length ? '<ul class="il">' + nx.join('') + '</ul>' : '<p class="nt">Geen kwartaal- of jaarrekeningen volgende maand.</p>'));
+  up.forEach(function (b) { todo.push('Zet <b>' + eur(b.bedrag) + '</b> opzij voor ' + esc(b.naam) + ' in ' + mLong(next) + '.'); });
+  /* 6. sparen en wat te doen */
+  if (!samen) {
+    var A = adviceModel(M), goal = CFG.SPAARDOEL * m.inkomenStructureel;
+    if (m.gespaard + 0.5 < goal) todo.push('Je spaardoel was ' + eur(goal) + '; je spaarde ' + eur(m.gespaard) + '.');
+    if (A && A.avail > 0) todo.push('Je kan <b>' + eur(A.avail) + '</b> van je rekening naar sparen of beleggen zetten.');
+    else if (A) todo.push('Laat je saldo (' + eur(A.cur) + ') op je rekening: volgende maand kost ongeveer ' + eur(A.keep) + '.');
+  }
+  cards.push(card('✓', 'Deze maand', todo.length ? '<ol class="todo">' + todo.slice(0, 5).map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ol>' : '<p class="nt">Niets bijzonders. Zo doorgaan.</p>'));
+  var title = samen ? 'Wat er gebeurde op de gezamenlijke rekening ' + M.when : (vs >= 0 ? 'Je hield ' + eur(vs) + ' over ' : 'Je gaf ' + eurAbs(vs) + ' meer uit dan je verdiende ') + M.when + (over.length ? ', ' + over.length + ' pocket' + (over.length > 1 ? 's' : '') + ' over budget' : '');
+  return { title: title, body: '<div class="insg">' + cards.join('') + '</div>' };
+};
+
 /* Maandadvies: wat blijft op de rekening voor volgende maand, wat gaat naar de spaarbuffer en wat naar ETF's.
    Rekenregel op basis van eigen instellingen (BUFFER_DOEL, ETF_DEEL, SPAARREKENING), geen beleggingsadvies. */
-R.advies = function (M, size) {
-  if (M.view === 'SAMEN') return { title: 'Maandadvies', body: empty('Het maandadvies staat bij Mats en Sofie: sparen en beleggen gebeurt per persoon.') };
+function adviceModel(M) {
   var lc = M.dq.lastComplete, to = M.P.to > lc ? lc : M.P.to, next = C.addM(to, 1);
   var w = C.wealth(M.ctx, M.view, to), cur = w.parts.filter(function (p) { return p.soort === 'rekening'; }).reduce(function (a, p) { return a + p.v; }, 0);
-  if (!w.parts.some(function (p) { return p.soort === 'rekening'; })) return { title: 'Maandadvies', body: empty('Nog geen saldo van je zichtrekening in Saldi.') };
+  if (!w.parts.some(function (p) { return p.soort === 'rekening'; })) return null;
   var last3 = C.byMonth(M.allS, C.range(C.addM(to, -2), to), true), spend = -last3.reduce(function (a, x) { return a + x.uitgaven; }, 0) / 3;
   var bills = C.upcoming(C.inPeriod(M.all, M.V[0], to), M.freq().keys, to).filter(function (b) { return b.volgende === next; }).reduce(function (a, b) { return a + b.bedrag; }, 0);
   var keep = spend + bills, avail = cur - keep;
@@ -747,6 +794,12 @@ R.advies = function (M, size) {
   else { toSav = Math.min(rest, Math.max(0, target - savNow)); rest -= toSav; }
   if (etfPct == null) { if (rest > 0) note.push('Kies via Instellingen welk deel van het overschot naar ETF\'s gaat.'); }
   else { toEtf = rest * etfPct; toSav += rest - toEtf; rest = 0; }
+  return { to: to, next: next, cur: cur, spend: spend, bills: bills, keep: keep, avail: avail, savNow: savNow, target: target, etfPct: etfPct, toSav: toSav, toEtf: toEtf, rest: rest, note: note };
+}
+R.advies = function (M, size) {
+  if (M.view === 'SAMEN') return { title: 'Maandadvies', body: empty('Het maandadvies staat bij Mats en Sofie: sparen en beleggen gebeurt per persoon.') };
+  var A = adviceModel(M); if (!A) return { title: 'Maandadvies', body: empty('Nog geen saldo van je zichtrekening in Saldi.') };
+  var next = A.next, keep = A.keep, spend = A.spend, bills = A.bills, avail = A.avail, savNow = A.savNow, target = A.target, etfPct = A.etfPct, toSav = A.toSav, toEtf = A.toEtf, rest = A.rest, note = A.note, cur = A.cur;
   var title = avail <= 0 ? 'Laat alles op je rekening staan voor ' + mLong(next) : 'Advies voor ' + mLong(next) + ': ' + eur(avail) + ' kan weg van je rekening';
   var item = function (v, l, c) { return '<div><b' + (c ? ' class="' + c + '"' : '') + '>' + eur(v) + '</b><span>' + l + '</span></div>'; };
   return { title: title, body: '<div class="stats">' + item(keep, 'houd op je rekening (' + eur(spend) + ' uitgaven' + (bills ? ' + ' + eur(bills) + ' rekeningen' : '') + ')') +

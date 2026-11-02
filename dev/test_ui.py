@@ -121,12 +121,12 @@ with sync_playwright() as pw:
     page.click('[data-per=maand]')
     # vegen en pagina's: pijltjestoets, veeg met de muis, bolletjes
     page.keyboard.press('ArrowRight')
-    if page.locator('#ptitle').inner_text() != 'Uitgaven': fails.append('pijltje rechts gaat niet naar volgende pagina')
+    if page.locator('#ptitle').inner_text() != 'Inzichten': fails.append('pijltje rechts gaat niet naar volgende pagina')
     g = page.locator('#grid').bounding_box()
     page.mouse.move(g['x'] + g['width'] * .8, g['y'] + 200); page.mouse.down(); page.mouse.move(g['x'] + g['width'] * .3, g['y'] + 210, steps=6); page.mouse.up(); page.wait_for_timeout(350)
-    if page.locator('#ptitle').inner_text() != 'Pockets': fails.append('vegen gaat niet naar volgende pagina: ' + page.locator('#ptitle').inner_text())
+    if page.locator('#ptitle').inner_text() != 'Uitgaven': fails.append('vegen gaat niet naar volgende pagina: ' + page.locator('#ptitle').inner_text())
     # doorklikken opent een vel met betalingen
-    for pg, sel in [(1, '[data-id=categorieen] [data-dd]'), (1, '[data-id=donut] .sl[data-dd]'), (1, '[data-id=donut] .lrow[data-dd]'), (2, '[data-id=regel] [data-dd]'), (3, '[data-id=vastsoort] .lrow[data-dd]'), (3, '[data-id=vastelasten] [data-dd]')]:
+    for pg, sel in [(2, '[data-id=categorieen] [data-dd]'), (2, '[data-id=donut] .sl[data-dd]'), (2, '[data-id=donut] .lrow[data-dd]'), (3, '[data-id=regel] [data-dd]'), (4, '[data-id=vastsoort] .lrow[data-dd]'), (4, '[data-id=vastelasten] [data-dd]')]:
         page.locator('#dots button').nth(pg).click(); page.wait_for_timeout(320)
         if not page.locator(sel).count(): fails.append('geen doorklik in ' + sel); continue
         (page.locator(sel).first.dispatch_event('click') if '.sl' in sel else page.locator(sel).first.click()); page.wait_for_selector('#sheet')
@@ -225,11 +225,11 @@ with sync_playwright() as pw:
 
     # 2b. gedeelde indeling uit het blad wint van wat op het toestel staat
     fx = json.load(open(os.path.join(ROOT, 'data', 'fixture.json')))
-    fx3 = dict(fx); fx3['indeling'] = {'v': 8, 'MATS:overzicht': [{'id': 'gemiddelde', 'size': 'L'}, {'id': 'inkomenflow', 'size': 'L'}]}
+    fx3 = dict(fx); fx3['indeling'] = {'v': 9, 'MATS:overzicht': [{'id': 'gemiddelde', 'size': 'L'}, {'id': 'inkomenflow', 'size': 'L'}]}
     errors = []
     ctx, page = new_page(b, 820, 1180, 'light', errors, fx3)
     page.goto(BASE + 'index.html?src=fixture'); page.wait_for_selector('#grid .w')
-    page.evaluate("() => { localStorage.setItem('hb_l4_MATS:overzicht', JSON.stringify({v:8,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS'); localStorage.removeItem('hb_page_MATS') }")
+    page.evaluate("() => { localStorage.setItem('hb_l4_MATS:overzicht', JSON.stringify({v:9,items:[{id:'inkomen',size:'S'}]})); localStorage.setItem('hb_person','MATS'); localStorage.removeItem('hb_page_MATS') }")
     page.reload(); page.wait_for_selector('#grid .w')
     ids = page.evaluate("() => [...document.querySelectorAll('#grid .w')].map(t => t.dataset.id)")
     if ids != ['gemiddelde', 'inkomenflow']: fails.append('gedeelde indeling niet gebruikt: ' + ','.join(ids))
